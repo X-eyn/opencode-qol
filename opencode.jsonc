@@ -1,0 +1,24 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  // OpenCode Quota: tuiCommandDisplay chooses whether native TUI command output appears in the session transcript or a local popup dialog.
+  // OpenCode Quota: loads the server plugin for slash commands and quota checks.
+  "plugin": [
+    "@slkiser/opencode-quota@latest"
+  ],
+  "mcp": {
+    // Spectrum UI: browse/search/install UI components from the registry.
+    "spectrum-ui": {
+      "type": "local",
+      "command": ["npx", "-y", "@spectrumui/mcp"],
+      "enabled": true
+    }
+  },
+  "provider": {
+    // Detected copilot authentication; opencode-quota added this global provider declaration.
+    "copilot": {},
+    // Detected openai authentication; opencode-quota added this global provider declaration.
+    "openai": {},
+    // Detected opencode-go authentication; opencode-quota added this global provider declaration.
+    "opencode-go": {}
+  }
+}

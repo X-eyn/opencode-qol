@@ -1,0 +1,22 @@
+<!doctype html><meta charset=utf-8><title>PixelSea preview</title>
+<body style="background:#121212;margin:0;padding:24px;font:16px Consolas,monospace;color:#888">
+<div id=card style="display:inline-block;border:2px solid #EC5B2B;border-radius:10px;padding:10px 14px"></div>
+<script src="sea.js"></script>
+<script>
+const SCALE = 2.15, W = 330, H = 20
+const bars = [["5h", 99, "#6ea0ff"], ["W", 96, "#6ea0ff"], ["M", 52, "#e5533d"], ["X", 15, "#e5533d"]]
+const card = document.getElementById("card")
+const items = bars.map(([name, pct, col], i) => {
+  const lab = document.createElement("div"); lab.innerHTML = name + '  <span style="color:' + col + '">' + pct + '%</span>'
+  const c = document.createElement("canvas"); c.width = W; c.height = H
+  c.style.cssText = "display:block;width:" + W * SCALE + "px;height:" + H * SCALE + "px;image-rendering:pixelated;margin:2px 0 8px"
+  card.append(lab, c)
+  const sea = new PixelSea(W, H, i + 1, THEMES[new URLSearchParams(location.search).get("theme") || "miami"]); sea.setPercent(pct)
+  return { sea, ctx: c.getContext("2d"), img: new ImageData(W, H) }
+})
+let last = performance.now()
+setInterval(() => {
+  const now = performance.now(), dt = (now - last) / 1000; last = now
+  for (const it of items) { it.sea.step(dt); it.sea.render(it.img.data); it.ctx.putImageData(it.img, 0, 0) }
+}, 80)
+</script>

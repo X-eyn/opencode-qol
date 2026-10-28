@@ -1,0 +1,1018 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Quota sidebar card — exact playground</title>
+<style>
+  :root { --cw: 8.4px; --ch: 24px; --fs: 16px; --font: 'Cascadia Mono', Consolas, 'JetBrains Mono', monospace; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body { background: #101010; color: #cfcfcf; font-family: 'Segoe UI', system-ui, sans-serif; font-size: 13px; }
+  #app { display: grid; grid-template-columns: 1fr 400px; grid-template-rows: 1fr auto; height: 100vh; }
+  #stage { grid-row: 1 / 3; overflow: auto; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; padding: 24px 16px; }
+  #stageHint { color: #6f6f6f; margin-bottom: 14px; text-align: center; line-height: 1.6; }
+  #cardOuter { padding: 20px 28px; background: #0a0a0a; border-radius: 6px; }
+  #card { display: flex; flex-direction: column; }
+  .r { display: flex; }
+  .c { flex: 0 0 var(--cw); height: var(--ch); line-height: var(--ch); font-family: var(--font); font-size: var(--fs); white-space: pre; overflow: hidden; }
+  .c.b { font-weight: 700; }
+  #card.grid .c { box-shadow: inset 0 0 0 1px rgba(255,255,255,0.07); }
+  #controls { border-left: 1px solid #262626; background: #141414; overflow-y: auto; padding: 14px 14px 30px; }
+  #controls h3 { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: #EC5B2B; margin: 16px 0 8px; border-bottom: 1px solid #2a2a2a; padding-bottom: 4px; }
+  #controls h3:first-child { margin-top: 0; }
+  .row { display: grid; grid-template-columns: 1fr 96px; gap: 6px; align-items: center; margin: 5px 0; }
+  .row label { color: #b8b8b8; }
+  .row .knob { display: block; color: #5c5c5c; font-size: 10.5px; font-family: Consolas, monospace; }
+  .row .ctl { display: flex; gap: 4px; align-items: center; justify-content: flex-end; }
+  .row input[type=range] { width: 96px; accent-color: #EC5B2B; }
+  .row input[type=number], .row input[type=text] { width: 84px; background: #1d1d1d; color: #e6e6e6; border: 1px solid #333; border-radius: 3px; padding: 1px 5px; font-family: Consolas, monospace; font-size: 12px; }
+  .row select { background: #1d1d1d; color: #e6e6e6; border: 1px solid #333; border-radius: 3px; font-size: 12px; }
+  .row input[type=color] { width: 34px; height: 20px; border: 1px solid #333; background: #1d1d1d; padding: 0; border-radius: 3px; }
+  .row input[type=checkbox] { accent-color: #EC5B2B; }
+  .wide { grid-template-columns: 1fr 96px; }
+  #exportWrap { grid-column: 2; border-top: 1px solid #262626; background: #0f0f0f; padding: 10px 14px 12px; }
+  #exportWrap h3 { margin: 0 0 6px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: #EC5B2B; }
+  #export { width: 100%; height: 150px; background: #171717; color: #9fd88f; border: 1px solid #2c2c2c; border-radius: 4px; font-family: Consolas, monospace; font-size: 11px; padding: 8px; resize: vertical; }
+  .btns { display: flex; gap: 8px; margin-top: 8px; }
+  .btns button { background: #242424; color: #ddd; border: 1px solid #3a3a3a; border-radius: 4px; padding: 4px 12px; cursor: pointer; }
+  .btns button:hover { background: #2f2f2f; }
+  .btns button.primary { background: #EC5B2B; border-color: #EC5B2B; color: #111; font-weight: 600; }
+</style>
+</head>
+<body>
+<div id="app">
+  <section id="stage">
+    <div id="stageHint">Exact sidebar card — same code path as the live TUI (verified byte-for-byte).<br>"cell height ×" at <b>1</b> = font-exact glyph tiling; tune font + size to match your terminal, then copy the settings back.</div>
+    <div id="cardOuter"><div id="card"></div></div>
+  </section>
+  <aside id="controls"></aside>
+  <div id="exportWrap">
+    <h3>Settings export — give this back</h3>
+    <textarea id="export" readonly spellcheck="false"></textarea>
+    <div class="btns">
+      <button class="primary" id="copyBtn">Copy settings</button>
+      <button id="resetBtn">Reset to live defaults</button>
+    </div>
+  </div>
+</div>
+
+<script id="pipeline">
+// ============================================================================
+// PIPELINE — identical code to the live sidebar (fire.js V15 + colorizer.js).
+// The only additions are explicit knobs, all defaulting to the live values:
+//   QUOTA_SABER_BLADE_PX=0 (auto), HILT_PX=0 (auto), NUB=.5, PLASMA/HALO/SPILL=1
+// Defaults reproduce the live card byte-for-byte (proven by the page test suite).
+// ============================================================================
+var QUOTA_FIRE_PALETTE = ["#6E1400", "#A31D00", "#D93600", "#FF5A00", "#FF8A00", "#FFB733", "#FFE594"];
+var QUOTA_FIRE_BAYER = [[0, 2], [3, 1]];
+function quotaFireHash(n) {
+  const s = Math.sin(n * 127.1 + 311.7) * 43758.5453;
+  return s - Math.floor(s);
+}
+function quotaFireTokenCountsLine(line) {
+  return /\b\d[\d.]*[KMB]?\)?\s+(?:in|out)\b/u.test(line);
+}
+function quotaTokenFireBurnMask(chars) {
+  const burn = new Array(chars.length).fill(false);
+  let runStart = -1;
+  let runHasDigit = false;
+  for (let i = 0; i <= chars.length; i++) {
+    const isNumChar = i < chars.length && /[0-9KMB.()]/u.test(chars[i]);
+    if (isNumChar) {
+      if (runStart < 0) {
+        runStart = i;
+        runHasDigit = false;
+      }
+      if (/[0-9]/u.test(chars[i])) runHasDigit = true;
+    } else if (runStart >= 0) {
+      if (runHasDigit) for (let j = runStart; j < i; j++) burn[j] = true;
+      runStart = -1;
+    }
+  }
+  return burn;
+}
+function quotaTokenFireSegments(line) {
+  const chars = Array.from(line);
+  const burnMask = quotaTokenFireBurnMask(chars);
+  const splitIndex = line.indexOf(" in");
+  const segments = [];
+  let mutedRun = "";
+  for (let index = 0; index < chars.length; index++) {
+    if (burnMask[index]) {
+      if (mutedRun) {
+        segments.push({ text: mutedRun, burn: false });
+        mutedRun = "";
+      }
+      segments.push({
+        text: chars[index],
+        burn: true,
+        index,
+        seed: splitIndex >= 0 && index > splitIndex ? 9 : 3
+      });
+    } else {
+      mutedRun += chars[index];
+    }
+  }
+  if (mutedRun) segments.push({ text: mutedRun, burn: false });
+  return segments;
+}
+function quotaTokenFireColor(index, phase, seed) {
+  const t = phase * 0.5;
+  const heat =
+    0.84 +
+    0.15 * Math.sin(index * 0.7 + t * 1.3 + seed) +
+    0.11 * Math.sin(index * 0.27 - t * 0.9 + seed * 2.3) +
+    0.07 * (quotaFireHash(index * 11.7 + Math.floor(t) * 3.1 + seed * 7.9) - 0.5);
+  const dithered = heat + (QUOTA_FIRE_BAYER[index & 1][(index + Math.floor(phase / 2)) & 1] / 4 - 0.375) * 0.3;
+  const clamped = Math.max(0.01, Math.min(0.999, dithered));
+  return QUOTA_FIRE_PALETTE[Math.floor(clamped * QUOTA_FIRE_PALETTE.length)];
+}
+var QUOTA_BAR_RE = /^([█]+)([░]*)\s+(\d+)%\s*(left|used)?\s*$/u;
+function quotaBarLine(line) {
+  return QUOTA_BAR_RE.test(line);
+}
+function quotaClamp(value, min, max) {
+  return Math.max(min, Math.min(max, value));
+}
+function quotaPadRight(str, width) {
+  return str.length >= width ? str : str + " ".repeat(width - str.length);
+}
+function quotaPadLeft(str, width) {
+  return str.length >= width ? str : " ".repeat(width - str.length) + str;
+}
+function quotaColorInts(value) {
+  if (typeof value === "string") {
+    const match = value.trim().match(/^#?([0-9a-f]{3}|[0-9a-f]{6})$/iu);
+    if (!match) return null;
+    let hex = match[1];
+    if (hex.length === 3) {
+      hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2];
+    }
+    return [parseInt(hex.slice(0, 2), 16), parseInt(hex.slice(2, 4), 16), parseInt(hex.slice(4, 6), 16)];
+  }
+  if (value && typeof value === "object") {
+    if (typeof value.toInts === "function") {
+      try {
+        const ints = value.toInts();
+        if (Array.isArray(ints) && ints.length >= 3) return [ints[0], ints[1], ints[2]];
+      } catch {
+        // Fall through to the r/g/b shape below.
+      }
+    }
+    const r = value.r;
+    const g = value.g;
+    const b = value.b;
+    if ([r, g, b].every((n) => typeof n === "number" && Number.isFinite(n))) {
+      const scale = r <= 1 && g <= 1 && b <= 1 ? 255 : 1;
+      return [r * scale, g * scale, b * scale];
+    }
+  }
+  return null;
+}
+function quotaMixColor(from, to, amount) {
+  const a = quotaColorInts(from);
+  const b = quotaColorInts(to);
+  if (!a || !b) return from;
+  const mixed = a.map((value, index) => Math.max(0, Math.min(255, Math.round(value + (b[index] - value) * amount))));
+  return `#${mixed.map((value) => value.toString(16).padStart(2, "0")).join("")}`;
+}
+function quotaBarBucketColor(percent, mode, theme) {
+  const text = theme && theme.text ? theme.text : {};
+  const feedback = text.feedback ? text.feedback : {};
+  const base = (entry) => (entry && entry.base !== undefined ? entry.base : undefined);
+  const remaining = mode === "used" ? 100 - percent : percent;
+  const bucket = remaining < 30 ? base(feedback.error) : remaining < 70 ? base(feedback.warning) : base(feedback.success);
+  return bucket !== undefined ? bucket : text.muted;
+}
+
+// ---- lightsaber quota bar (pixel block) — knobs, defaults = live values ----
+var QUOTA_SABER_SPEED = 2.25;
+var QUOTA_SABER_BLOCK_ROWS = 6;
+var QUOTA_SABER_VIEW_ROWS = [1, 2, 3];
+var QUOTA_SABER_ANIM_ROWS = [1, 2, 3];
+var QUOTA_SABER_LABEL_ROW = 2;
+var QUOTA_SABER_BLADE_PX = 0;   // 0 = auto (canvas/2)
+var QUOTA_SABER_HILT_PX = 0;    // 0 = auto (bladePx - 2)
+var QUOTA_SABER_NUB = 0.5;      // tip nub strength
+var QUOTA_SABER_PLASMA = 1;     // plasma amplitude multiplier
+var QUOTA_SABER_HALO = 1;       // emitter halo strength multiplier
+var QUOTA_SABER_SPILL = 1;      // floor spill strength multiplier
+var QUOTA_SABER_QUAD = { 0: " ", 1: "▘", 2: "▝", 3: "▀", 4: "▖", 5: "▌", 6: "▞", 7: "▛", 8: "▗", 9: "▚", 10: "▐", 11: "▜", 12: "▄", 13: "▙", 14: "▟", 15: "█" };
+var QUOTA_SABER_QUAD_BITS = [1, 2, 4, 8];
+var QUOTA_SABER_DARK = "#0f0d0b";
+var QUOTA_SABER_METAL_TOP = "#9a9a9a";
+var QUOTA_SABER_METAL_BOTTOM = "#2e2e2e";
+var QUOTA_SABER_METAL_RIDGE = "#161616";
+var QUOTA_SABER_METAL_POMMEL = "#0c0c0c";
+var QUOTA_SABER_METAL_EDGE = "#d8d8d8";
+var QUOTA_SABER_SHROUD_TOP = "#7c7c7c";
+var QUOTA_SABER_SHROUD_BOTTOM = "#242424";
+var QUOTA_SABER_SHROUD_EDGE = "#d0d0d0";
+var QUOTA_SABER_BUTTON = "#4dff88";
+
+function quotaSaberScaleColor(hex, factor) {
+  const ints = quotaColorInts(hex);
+  if (!ints) return hex;
+  const scaled = ints.map((value) => Math.max(0, Math.min(255, Math.round(value * factor))));
+  return `#${scaled.map((value) => value.toString(16).padStart(2, "0")).join("")}`;
+}
+function quotaSaberQuantColor(hex) {
+  const ints = quotaColorInts(hex);
+  if (!ints) return hex;
+  const quant = ints.map((value) => Math.max(0, Math.min(255, Math.round(value / 8) * 8)));
+  return `#${quant.map((value) => value.toString(16).padStart(2, "0")).join("")}`;
+}
+function quotaSaberIsVoid(hex) {
+  const ints = quotaColorInts(hex);
+  if (!ints) return false;
+  return (ints[0] + ints[1] + ints[2]) / 3 < 20;
+}
+function quotaSaberGlyphColors(colors) {
+  const snapped = colors.map(quotaSaberQuantColor);
+  const counts = new Map();
+  for (const color of snapped) counts.set(color, (counts.get(color) || 0) + 1);
+  const ordered = [...counts.keys()].sort((a, b) => counts.get(b) - counts.get(a));
+  if (ordered.length === 1) return { g: "█", fg: ordered[0] };
+  const colorA = ordered[0];
+  // Second cluster: the most frequent color is primary; among the rest keep the
+  // one FARTHEST from it so both the dark rim and the bright core survive the
+  // 2-color cell budget (a plain frequency pick can grab two neighbours from
+  // the same region when the scaled art has several near-shades).
+  const aInts = quotaColorInts(colorA);
+  let colorB = ordered[1];
+  let bestDistance = -1;
+  for (let i = 1; i < ordered.length; i++) {
+    const ints = quotaColorInts(ordered[i]);
+    const distance = Math.abs(aInts[0] - ints[0]) + Math.abs(aInts[1] - ints[1]) + Math.abs(aInts[2] - ints[2]);
+    if (distance > bestDistance) {
+      bestDistance = distance;
+      colorB = ordered[i];
+    }
+  }
+  const bInts = quotaColorInts(colorB);
+  let maskA = 0;
+  for (let i = 0; i < snapped.length; i++) {
+    const ints = quotaColorInts(snapped[i]);
+    const da = Math.abs(aInts[0] - ints[0]) + Math.abs(aInts[1] - ints[1]) + Math.abs(aInts[2] - ints[2]);
+    const db = Math.abs(bInts[0] - ints[0]) + Math.abs(bInts[1] - ints[1]) + Math.abs(bInts[2] - ints[2]);
+    if (da <= db) maskA |= QUOTA_SABER_QUAD_BITS[i];
+  }
+  const popA = (maskA & 1) + ((maskA >> 1) & 1) + ((maskA >> 2) & 1) + ((maskA >> 3) & 1);
+  const useA = popA <= 2;
+  const mask = useA ? maskA : 15 ^ maskA;
+  const fg = useA ? colorA : colorB;
+  const bg = useA ? colorB : colorA;
+  if (mask === 15) return { g: "█", fg };
+  if (mask === 0) return { g: " ", fg };
+  return { g: QUOTA_SABER_QUAD[mask], fg, bg };
+}
+function quotaSaberPixel(widthPx, x, y, T, percent, bladeCol) {
+  const S = widthPx / 152;
+  const SH = QUOTA_SABER_BLOCK_ROWS * 2;
+  const cy = (SH - 3) / 2;
+  const bladePx = QUOTA_SABER_BLADE_PX > 0 ? QUOTA_SABER_BLADE_PX : SH / 2;
+  const hiltPx = QUOTA_SABER_HILT_PX > 0 ? QUOTA_SABER_HILT_PX : bladePx - 2;
+  const maxDist0 = (bladePx - 1) / 2 + 0.01;
+  const hiltHalf = (hiltPx - 1) / 2;
+  const emitHalf = (bladePx - 1) / 2;
+  const bladeStart = Math.round(34 * S);
+  const bladeEnd = bladeStart + Math.round(112 * S) * (percent / 100);
+
+  // void background with vignette
+  const vx = (x / (widthPx - 1)) * 2 - 1;
+  const vy = (y / (SH - 1)) * 2 - 1;
+  const vig = 1 - 0.2 * Math.sqrt(vx * vx + vy * vy) / 1.414;
+  let col = quotaSaberScaleColor(QUOTA_SABER_DARK, vig);
+
+  // floor light spill under the blade
+  const spillY = cy + maxDist0 + 0.5;
+  if (x >= bladeStart && x <= bladeEnd + Math.round(6 * S) && y > spillY) {
+    const d = y - spillY;
+    col = quotaMixColor(col, bladeCol, quotaClamp(0.14 * QUOTA_SABER_SPILL * Math.exp(-d / Math.max(0.6, 2.8 * (bladePx / 13))), 0, 0.22));
+  }
+
+  // ---- hilt ----
+  const hx0 = Math.round(8 * S);
+  if (x >= hx0 && x <= Math.round(30 * S) - 1 && Math.abs(y - cy) <= hiltHalf) {
+    const ry = (y - (cy - hiltHalf)) / (2 * hiltHalf);
+    let g = quotaMixColor(QUOTA_SABER_METAL_TOP, QUOTA_SABER_METAL_BOTTOM, ry);
+    if (x !== hx0 && (x - hx0) % 2 === 0) g = quotaMixColor(g, QUOTA_SABER_METAL_RIDGE, 0.5);
+    if (x === hx0) g = quotaMixColor(g, QUOTA_SABER_METAL_POMMEL, 0.55);
+    if (y === cy - hiltHalf || y === cy + hiltHalf) g = quotaMixColor(g, QUOTA_SABER_METAL_EDGE, 0.55);
+    const bx0 = Math.round(12 * S);
+    const bx1 = Math.round(14.9 * S);
+    if (x >= bx0 && x <= bx1 && y >= cy - hiltHalf + 1 && y <= cy - hiltHalf + 2) {
+      const pulse = 0.75 + 0.25 * Math.sin(T * 0.25);
+      g = quotaMixColor(QUOTA_SABER_BUTTON, "#ffffff", 0.25 * pulse);
+    }
+    return g;
+  }
+  // ---- emitter shroud ----
+  const ex0 = Math.round(30 * S);
+  const ex1 = Math.round(33.9 * S);
+  if (x >= ex0 && x <= ex1 && Math.abs(y - cy) <= emitHalf) {
+    const ry = (y - (cy - emitHalf)) / (2 * emitHalf);
+    let g = quotaMixColor(QUOTA_SABER_SHROUD_TOP, QUOTA_SABER_SHROUD_BOTTOM, ry);
+    if (x === ex0 || x === ex1) g = quotaMixColor(g, QUOTA_SABER_SHROUD_EDGE, 0.45);
+    return g;
+  }
+
+  // ---- emitter halo ----
+  {
+    const dxE = x - Math.round(33 * S);
+    const dyE = y - cy;
+    const dE = Math.sqrt(dxE * dxE + dyE * dyE);
+    const haloR = Math.max(2.5, 14 * S);
+    if (dE < haloR) col = quotaMixColor(col, bladeCol, quotaClamp(0.3 * QUOTA_SABER_HALO * Math.exp(-dE / Math.max(0.8, 4.2 * S)), 0, 0.35));
+  }
+
+  // ---- blade ----
+  if (x >= bladeStart - 1 && x <= bladeEnd) {
+    const dist = Math.abs(y - cy);
+    const taperR = Math.max(2, Math.round(10 * S));
+    const tipP = quotaClamp((x - (bladeEnd - taperR)) / taperR, 0, 1);
+    const maxDist = maxDist0 * (1 - Math.pow(tipP, 2.4)) + QUOTA_SABER_NUB * Math.pow(tipP, 2.4) + 0.05;
+    if (dist <= maxDist) {
+      const d = dist / Math.max(0.6, maxDist);
+      const plasma =
+        1 +
+        QUOTA_SABER_PLASMA * 0.05 * Math.sin(x * (0.22 / S) - T * 0.6) +
+        QUOTA_SABER_PLASMA * 0.035 * Math.sin(x * (0.09 / S) + T * 0.37) +
+        QUOTA_SABER_PLASMA * 0.02 * Math.sin(x * (0.6 / S) + T * 1.1);
+      let band;
+      if (d < 0.26) band = "#ffffff";
+      else if (d < 0.42) band = quotaMixColor(bladeCol, "#ffffff", 0.88);
+      else if (d < 0.6) band = quotaMixColor(bladeCol, "#ffffff", 0.5);
+      else if (d < 0.78) band = bladeCol;
+      else if (d < 0.92) band = quotaMixColor(bladeCol, QUOTA_SABER_DARK, 0.35);
+      else band = quotaMixColor(bladeCol, QUOTA_SABER_DARK, 0.68);
+      band = quotaSaberScaleColor(band, quotaClamp(plasma, 0.9, 1.14));
+      band = quotaMixColor(band, "#ffffff", quotaClamp(0.6 * Math.pow(tipP, 2.6), 0, 0.65));
+      return band;
+    }
+  }
+  return col;
+}
+
+function quotaSaberRowSegments(row, width, percent, mode, phase, theme, nameText, countdownText) {
+  const pctValue = Number(percent);
+  const pct = Number.isFinite(pctValue) ? quotaClamp(pctValue, 0, 100) : 0;
+  const text = theme && theme.text ? theme.text : {};
+  const bucket = quotaBarBucketColor(pct, mode, theme) || (text && text.muted) || "#888888";
+  const T = phase * QUOTA_SABER_SPEED;
+  const segments = [];
+  for (let cell = 0; cell < width; cell++) {
+    const x0 = cell * 2;
+    const top = quotaSaberPixel(width * 2, x0, row * 2, T, pct, bucket);
+    const bottom = quotaSaberPixel(width * 2, x0, row * 2 + 1, T, pct, bucket);
+    if (quotaSaberIsVoid(top) && quotaSaberIsVoid(bottom)) {
+      segments.push({ text: " " });
+      continue;
+    }
+    const glyph = quotaSaberGlyphColors([top, top, bottom, bottom]);
+    if (glyph.bg !== undefined) {
+      segments.push({ text: glyph.g, fg: glyph.fg, bg: glyph.bg });
+    } else {
+      segments.push({ text: glyph.g, fg: glyph.fg });
+    }
+  }
+  if (row === QUOTA_SABER_LABEL_ROW) {
+    const label = `${Math.round(pct)}% ${mode === "used" ? "used" : "left"}`.padStart(9);
+    const parts = label.match(/^(\s*)(\d+%)(\s.*)?$/u);
+    segments.push({ text: "  ", fg: text.muted });
+    if (parts) {
+      if (parts[1]) segments.push({ text: parts[1], fg: text.muted });
+      segments.push({ text: parts[2], fg: bucket });
+      if (parts[3]) segments.push({ text: parts[3], fg: text.muted });
+    } else {
+      segments.push({ text: label, fg: text.muted });
+    }
+  }
+  // Compact fold: the window name rides the block's top row and the reset
+  // countdown rides its bottom row, reclaiming the empty columns beside the
+  // saber (both strings and colors are exactly what the old name row showed).
+  const viewRows = QUOTA_SABER_VIEW_ROWS;
+  if (viewRows.length > 1) {
+    const mutedColor = text.muted;
+    const accentColor =
+      text.action && text.action.primary && text.action.primary.selected !== undefined
+        ? text.action.primary.selected
+        : mutedColor;
+    const sideSlot = 11;
+    if (nameText && row === viewRows[0] && row !== QUOTA_SABER_LABEL_ROW) {
+      const padded =
+        nameText.length > sideSlot - 2
+          ? quotaPadRight(nameText.slice(0, sideSlot), sideSlot)
+          : "  " + quotaPadRight(nameText, sideSlot - 2);
+      segments.push({ text: padded, fg: mutedColor });
+    }
+    if (countdownText && row === viewRows[viewRows.length - 1] && row !== QUOTA_SABER_LABEL_ROW) {
+      segments.push({ text: quotaPadLeft(countdownText.slice(0, sideSlot), sideSlot), fg: accentColor });
+    }
+  }
+  return segments;
+}
+function quotaSaberBlockRows(width, percent, mode, phase, theme) {
+  const rows = [];
+  for (let row = 0; row < QUOTA_SABER_BLOCK_ROWS; row++) {
+    rows.push(quotaSaberRowSegments(row, width, percent, mode, phase, theme));
+  }
+  return rows;
+}
+
+// ============================================================================
+// COLORIZER — verbatim from colorizer.js (line coloring for non-saber rows).
+// ============================================================================
+function quotaSidebarLineSegments(line) {
+  const muted = (theme) => theme.text.muted;
+  const plain = (text) => ({ text, color: muted });
+  const accent = (theme) => theme.text.action.primary.selected;
+  const text = line ?? "";
+  if (!text) return [{ text: " ", color: muted }];
+  if (/^Session input\/out/u.test(text)) {
+    return [{ text, color: (theme) => theme.text.base }];
+  }
+  const percentColor = (percent, mode) => {
+    const remaining = mode === "used" ? 100 - percent : percent;
+    return (theme) => {
+      const t = theme.text;
+      if (remaining < 30) return t.feedback.error.base;
+      if (remaining < 70) return t.feedback.warning.base;
+      return t.feedback.success.base;
+    };
+  };
+  const barMatch = text.match(/^(\s*)([█]+)([░]*)(.*)$/u);
+  if (barMatch) {
+    const segments = [];
+    if (barMatch[1]) segments.push(plain(barMatch[1]));
+    const filled = barMatch[2];
+    const empty = barMatch[3];
+    const rest = barMatch[4];
+    let percent;
+    let mode;
+    const restMatch = rest.match(/^(\s*)(\d+)%(\s*)(left|used)?\s*$/u);
+    if (restMatch) {
+      percent = Math.max(0, Math.min(100, Number(restMatch[2])));
+      mode = restMatch[4];
+    }
+    const total = filled.length + empty.length;
+    if (percent === undefined && total > 0) {
+      percent = Math.round((filled.length / total) * 100);
+    }
+    const filledColor = percent === undefined ? muted : percentColor(percent, mode);
+    segments.push({ text: filled, color: filledColor });
+    if (empty) segments.push(plain(empty));
+    if (rest) {
+      if (restMatch) {
+        if (restMatch[1]) segments.push(plain(restMatch[1]));
+        segments.push({ text: `${restMatch[2]}%`, color: filledColor });
+        if (restMatch[3]) segments.push(plain(restMatch[3]));
+        if (restMatch[4]) segments.push(plain(restMatch[4]));
+      } else {
+        segments.push(plain(rest));
+      }
+    }
+    return segments;
+  }
+  const tailRe = /^(.*?)(\s+)((?:\d+(?:\.\d+)?[dhms]\s*)+)\s*$/u;
+  const tail = tailRe.exec(text);
+  if (tail) {
+    const countdown = tail[3].trimEnd();
+    const groups = countdown.match(/\d+(?:\.\d+)?[dhms]/gu) || [];
+    if (groups.length >= 2) {
+      const segments = [];
+      if (tail[1]) segments.push(plain(tail[1]));
+      segments.push(plain(tail[2]));
+      segments.push({ text: countdown, color: accent });
+      return segments;
+    }
+  }
+  const percentOnly = text.match(/^(\s*)(\d+)%(\s*)(left|used)?\s*$/u);
+  if (percentOnly) {
+    const segments = [];
+    if (percentOnly[1]) segments.push(plain(percentOnly[1]));
+    segments.push({
+      text: `${percentOnly[2]}%`,
+      color: percentColor(Number(percentOnly[2]), percentOnly[4]),
+    });
+    if (percentOnly[3]) segments.push(plain(percentOnly[3]));
+    if (percentOnly[4]) segments.push(plain(percentOnly[4]));
+    return segments;
+  }
+  const segments = [];
+  let coloredNumber = false;
+  const re = /(\d+(?:\.\d+)?[KMB]?)|(\([\d.]+[KMB]?\))|(in|out)\b|\s+/gu;
+  let index = 0;
+  let m;
+  while ((m = re.exec(text))) {
+    if (m.index > index) segments.push(plain(text.slice(index, m.index)));
+    index = m.index + m[0].length;
+    if (m[1]) {
+      const follow = text.slice(index).match(/^(?:\s*\([\d.]+[KMB]?\))?\s+(in|out)\b/u);
+      if (follow) {
+        coloredNumber = true;
+        segments.push({
+          text: m[1],
+          color: (theme) => follow[1] === "in" ? theme.text.feedback.info.base : theme.text.feedback.success.base
+        });
+      } else {
+        segments.push(plain(m[1]));
+      }
+    } else {
+      segments.push(plain(m[0]));
+    }
+  }
+  if (index < text.length) segments.push(plain(text.slice(index)));
+  if (!coloredNumber) return [plain(text)];
+  return segments;
+}
+
+// ============================================================================
+// SERVER-SIDE LINE FORMAT — verbatim ports of the formatter helpers used by the
+// sidebar message (format-utils.js / format.js / session-tokens-format.js).
+// ============================================================================
+function padRight(str, width) {
+  return str.length >= width ? str : str + " ".repeat(width - str.length);
+}
+function padLeft(str, width) {
+  return str.length >= width ? str : " ".repeat(width - str.length) + str;
+}
+function classicNameTimeLine(leftText, timeStr, maxWidth, separator, preferredTimeWidth) {
+  if (!timeStr) return leftText.slice(0, maxWidth);
+  let timeWidth = Math.max(timeStr.length, preferredTimeWidth);
+  const preferredNameWidth = maxWidth - separator.length - timeWidth;
+  const compactLineWidth = leftText.length + separator.length + timeStr.length;
+  if (leftText.length > preferredNameWidth && compactLineWidth <= maxWidth) {
+    timeWidth = timeStr.length;
+  }
+  const nameWidth = Math.max(1, maxWidth - separator.length - timeWidth);
+  return (padRight(leftText, nameWidth) + separator + padLeft(timeStr, timeWidth)).slice(0, maxWidth);
+}
+function formatTokenCount(count) {
+  if (count >= 1_000_000) return `${(count / 1_000_000).toFixed(1)}M`;
+  if (count >= 10_000) return `${(count / 1_000).toFixed(0)}K`;
+  if (count >= 1_000) return `${(count / 1_000).toFixed(1)}K`;
+  return String(count);
+}
+function formatInputWithCache(input, cachedInput) {
+  const inputStr = formatTokenCount(input);
+  const cached = cachedInput ?? 0;
+  return cached > 0 ? `${inputStr} (${formatTokenCount(cached)})` : inputStr;
+}
+</script>
+
+<script id="ui">
+"use strict";
+// ============================================================================
+// PLAYGROUND UI
+// ============================================================================
+const DEFAULTS = {
+  data: {
+    group: "OpenCode Go",
+    title: "\u25BC Quota",
+    windows: [
+      { name: "5h", percent: 95, mode: "left", time: "4h 11m" },
+      { name: "Weekly", percent: 37, mode: "left", time: "1d 15h 3m" },
+      { name: "Monthly", percent: 68, mode: "left", time: "24d 8h 9m" }
+    ],
+    tokens: { show: true, model: "claude-sonnet-4-20250514", input: 1000000, cached: 200000, output: 300000 }
+  },
+  saber: {
+    blockRows: 6, viewStart: 1, viewCount: 3, labelRow: 2, barCells: 21,
+    speed: 2.25, bladePx: 0, hiltPx: 0, nub: 0.5, plasma: 1, halo: 1, spill: 1
+  },
+  theme: {
+    textBase: "#eeeeee", muted: "#808080", accent: "#EC5B2B",
+    success: "#6ba1e6", warning: "#EC5B2B", error: "#e06c75", info: "#56b6c2",
+    border: "#EC5B2B", pageBg: "#0a0a0a"
+  },
+  palette: {
+    dark: "#0f0d0b", metalTop: "#9a9a9a", metalBottom: "#2e2e2e", ridge: "#161616",
+    pommel: "#0c0c0c", edge: "#d8d8d8", shroudTop: "#7c7c7c", shroudBottom: "#242424",
+    shroudEdge: "#d0d0d0", button: "#4dff88"
+  },
+  view: { font: "Cascadia Mono", fontSize: 16, chFactor: 1.0, grid: false, showBorder: true, showHeader: true }
+};
+
+const clone = (o) => JSON.parse(JSON.stringify(o));
+function deepMerge(target, src) {
+  for (const key of Object.keys(src || {})) {
+    const v = src[key];
+    if (v && typeof v === "object" && !Array.isArray(v) && target[key] && typeof target[key] === "object" && !Array.isArray(target[key])) {
+      deepMerge(target[key], v);
+    } else if (v !== undefined) {
+      target[key] = Array.isArray(v) ? JSON.parse(JSON.stringify(v)) : v;
+    }
+  }
+  return target;
+}
+
+const STORE_KEY = "quota-card-playground-v4";
+let S = clone(DEFAULTS);
+try {
+  const saved = localStorage.getItem(STORE_KEY);
+  if (saved) deepMerge(S, JSON.parse(saved));
+} catch { /* ignore */ }
+const save = () => { try { localStorage.setItem(STORE_KEY, JSON.stringify(S)); } catch { /* ignore */ } };
+
+let phase = Number(localStorage.getItem(STORE_KEY + ":phase")) || 0;
+let frozen = false;
+
+function applyPipelineVars() {
+  QUOTA_SABER_SPEED = S.saber.speed;
+  QUOTA_SABER_BLOCK_ROWS = S.saber.blockRows;
+  QUOTA_SABER_VIEW_ROWS = [];
+  for (let i = 0; i < S.saber.viewCount; i++) QUOTA_SABER_VIEW_ROWS.push(S.saber.viewStart + i);
+  QUOTA_SABER_ANIM_ROWS = QUOTA_SABER_VIEW_ROWS.slice();
+  QUOTA_SABER_LABEL_ROW = S.saber.labelRow;
+  QUOTA_SABER_BLADE_PX = S.saber.bladePx;
+  QUOTA_SABER_HILT_PX = S.saber.hiltPx;
+  QUOTA_SABER_NUB = S.saber.nub;
+  QUOTA_SABER_PLASMA = S.saber.plasma;
+  QUOTA_SABER_HALO = S.saber.halo;
+  QUOTA_SABER_SPILL = S.saber.spill;
+  QUOTA_SABER_DARK = S.palette.dark;
+  QUOTA_SABER_METAL_TOP = S.palette.metalTop;
+  QUOTA_SABER_METAL_BOTTOM = S.palette.metalBottom;
+  QUOTA_SABER_METAL_RIDGE = S.palette.ridge;
+  QUOTA_SABER_METAL_POMMEL = S.palette.pommel;
+  QUOTA_SABER_METAL_EDGE = S.palette.edge;
+  QUOTA_SABER_SHROUD_TOP = S.palette.shroudTop;
+  QUOTA_SABER_SHROUD_BOTTOM = S.palette.shroudBottom;
+  QUOTA_SABER_SHROUD_EDGE = S.palette.shroudEdge;
+  QUOTA_SABER_BUTTON = S.palette.button;
+}
+
+function themeObject() {
+  return {
+    text: {
+      base: S.theme.textBase,
+      muted: S.theme.muted,
+      action: { primary: { selected: S.theme.accent } },
+      feedback: {
+        success: { base: S.theme.success },
+        warning: { base: S.theme.warning },
+        error: { base: S.theme.error },
+        info: { base: S.theme.info }
+      }
+    }
+  };
+}
+
+// ---------------------------------------------------------------------------
+// card builder — a 36-cell grid, exactly how the TUI composes the card:
+// border (1) + padding (1) + content (32) + padding (1) + border (1)
+// ---------------------------------------------------------------------------
+const CARD_W = 36, CONTENT_W = 32, CONTENT_X = 2;
+const SABER_X = CONTENT_X;
+
+function buildCardCells() {
+  applyPipelineVars();
+  const theme = themeObject();
+  const rows = [];
+  const mk = () => Array.from({ length: CARD_W }, () => ({ c: " " }));
+  const put = (row, textValue, at, style) => {
+    const chars = Array.from(textValue);
+    for (let i = 0; i < chars.length && at + i < CARD_W; i++) row[at + i] = { c: chars[i], ...style };
+  };
+  const putSegments = (row, segments, at) => {
+    let x = at;
+    for (const seg of segments) {
+      const fg = typeof seg.fg === "string" ? seg.fg : undefined;
+      const bg = typeof seg.bg === "string" ? seg.bg : undefined;
+      put(row, seg.text, x, { fg, bg });
+      x += Array.from(seg.text).length;
+    }
+    return x;
+  };
+  const colorize = (line) => quotaSidebarLineSegments(line).map((seg) => {
+    let fg;
+    try { fg = seg.color(theme); } catch { fg = S.theme.muted; }
+    return { text: seg.text, fg: typeof fg === "string" ? fg : S.theme.muted };
+  });
+
+  const borderStyle = { fg: S.theme.border };
+  if (S.view.showBorder) {
+    const top = mk();
+    put(top, "\u256D" + "\u2500".repeat(CARD_W - 2) + "\u256E", 0, borderStyle);
+    rows.push(top);
+  }
+  if (S.view.showHeader) {
+    const head = mk();
+    if (S.view.showBorder) { put(head, "\u2502", 0, borderStyle); put(head, "\u2502", CARD_W - 1, borderStyle); }
+    put(head, S.data.title, CONTENT_X, { fg: S.theme.textBase });
+    rows.push(head);
+  }
+
+  const side = (row) => {
+    if (!S.view.showBorder) return row;
+    put(row, "\u2502", 0, borderStyle);
+    put(row, "\u2502", CARD_W - 1, borderStyle);
+    return row;
+  };
+
+  // provider group header line — "[OpenCode Go]" (bold, text.base)
+  {
+    const groupRow = mk();
+    put(groupRow, "[" + S.data.group + "]", CONTENT_X, { fg: S.theme.textBase, b: true });
+    rows.push(side(groupRow));
+  }
+
+  for (const win of S.data.windows) {
+    // compact fold: the name line's name + countdown ride the saber block's
+    // top and bottom rows (same parse + colors the separate row used).
+    const nameLine = classicNameTimeLine(win.name, win.time, CONTENT_W, "  ", 7);
+    const nameMatch = /^(.*?)(\s+)((?:\d+(?:\.\d+)?[dhms]\s*)+)\s*$/u.exec(nameLine);
+    const nameText = (nameMatch ? nameMatch[1] : nameLine).trim();
+    const countdownText = nameMatch ? nameMatch[3].trimEnd() : "";
+
+    for (const rowIndex of QUOTA_SABER_VIEW_ROWS) {
+      if (rowIndex < 0 || rowIndex >= QUOTA_SABER_BLOCK_ROWS) continue;
+      const segs = quotaSaberRowSegments(rowIndex, S.saber.barCells, win.percent, win.mode, phase, theme, nameText, countdownText);
+      const r = mk();
+      putSegments(r, segs, SABER_X);
+      rows.push(side(r));
+    }
+  }
+
+  if (S.data.tokens.show) {
+    const heading = mk();
+    putSegments(heading, colorize("Session input/output tokens"), CONTENT_X);
+    rows.push(side(heading));
+    const modelLine = mk();
+    putSegments(modelLine, colorize("  " + S.data.tokens.model), CONTENT_X);
+    rows.push(side(modelLine));
+    const countLine = "    " + formatInputWithCache(S.data.tokens.input, S.data.tokens.cached) + " in  " + formatTokenCount(S.data.tokens.output) + " out";
+    const countRow = mk();
+    const fireSegs = quotaTokenFireSegments(countLine.slice(0, CONTENT_W));
+    let x = CONTENT_X;
+    for (const seg of fireSegs) {
+      const fg = seg.burn ? quotaTokenFireColor(seg.index, phase, seg.seed) : S.theme.muted;
+      put(countRow, seg.text, x, { fg });
+      x += Array.from(seg.text).length;
+    }
+    rows.push(side(countRow));
+  }
+
+  if (S.view.showBorder) {
+    const bottom = mk();
+    put(bottom, "\u2570" + "\u2500".repeat(CARD_W - 2) + "\u256F", 0, borderStyle);
+    rows.push(bottom);
+  }
+  return rows;
+}
+
+// ---------------------------------------------------------------------------
+// rendering
+// ---------------------------------------------------------------------------
+const cardEl = document.getElementById("card");
+const exportEl = document.getElementById("export");
+let cwMeasured = 0;
+let chMeasured = 0;
+function measureCells() {
+  try {
+    const ctx = document.createElement("canvas").getContext("2d");
+    ctx.font = `${S.view.fontSize}px '${S.view.font}', Consolas, monospace`;
+    const metrics = ctx.measureText("\u2588");
+    const advance = metrics.width;
+    const blockHeight = (metrics.actualBoundingBoxAscent ?? 0) + (metrics.actualBoundingBoxDescent ?? 0);
+    if (Number.isFinite(advance) && advance > 0) cwMeasured = advance;
+    if (Number.isFinite(blockHeight) && blockHeight > 0) chMeasured = blockHeight;
+  } catch { /* ignore */ }
+  if (!cwMeasured) cwMeasured = S.view.fontSize * 0.6;
+  if (!chMeasured) chMeasured = S.view.fontSize * 1.23;
+}
+function esc(s) { return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
+function renderCard() {
+  const cw = cwMeasured || S.view.fontSize * 0.6;
+  const ch = (chMeasured || S.view.fontSize * 1.23) * S.view.chFactor;
+  cardEl.style.setProperty("--cw", `${cw}px`);
+  cardEl.style.setProperty("--ch", `${ch}px`);
+  cardEl.style.setProperty("--fs", `${S.view.fontSize}px`);
+  cardEl.style.setProperty("--font", `'${S.view.font}', Consolas, monospace`);
+  cardEl.classList.toggle("grid", S.view.grid);
+  const rows = buildCardCells();
+  const html = rows.map((row) => {
+    let out = '<div class="r">';
+    for (const cell of row) {
+      const styles = [];
+      if (cell.fg) styles.push(`color:${cell.fg}`);
+      // full blocks are solid: paint bg = fg when no bg given (terminal-identical,
+      // and it kills sub-pixel seams between stacked rows)
+      if (cell.bg) styles.push(`background-color:${cell.bg}`);
+      else if (cell.fg && cell.c === "\u2588") styles.push(`background-color:${cell.fg}`);
+      if (cell.b) styles.push("font-weight:700");
+      out += styles.length ? `<span class="c" style="${styles.join(";")}">${esc(cell.c)}</span>` : `<span class="c">${esc(cell.c)}</span>`;
+    }
+    return out + "</div>";
+  }).join("");
+  cardEl.innerHTML = html;
+  document.getElementById("cardOuter").style.background = S.theme.pageBg;
+}
+
+// ---------------------------------------------------------------------------
+// export
+// ---------------------------------------------------------------------------
+function buildExport() {
+  const viewRows = [];
+  for (let i = 0; i < S.saber.viewCount; i++) viewRows.push(S.saber.viewStart + i);
+  const maxWidth = S.saber.barCells + 2 + 9;
+  const lines = [];
+  lines.push("/* bake into tui-color-patch/fire.js — exact values from the playground */");
+  lines.push(`QUOTA_SABER_BLOCK_ROWS = ${S.saber.blockRows}`);
+  lines.push(`QUOTA_SABER_VIEW_ROWS = [${viewRows.join(", ")}]`);
+  lines.push(`QUOTA_SABER_ANIM_ROWS = [${viewRows.join(", ")}]`);
+  lines.push(`QUOTA_SABER_LABEL_ROW = ${S.saber.labelRow}`);
+  lines.push(`QUOTA_SABER_SPEED = ${S.saber.speed}`);
+  lines.push(`QUOTA_SABER_BLADE_PX = ${S.saber.bladePx}   /* 0 = auto (canvas/2) */`);
+  lines.push(`QUOTA_SABER_HILT_PX = ${S.saber.hiltPx}   /* 0 = auto (blade-2) */`);
+  lines.push(`QUOTA_SABER_NUB = ${S.saber.nub}`);
+  lines.push(`QUOTA_SABER_PLASMA = ${S.saber.plasma}`);
+  lines.push(`QUOTA_SABER_HALO = ${S.saber.halo}`);
+  lines.push(`QUOTA_SABER_SPILL = ${S.saber.spill}`);
+  lines.push("/* palette */");
+  lines.push(`QUOTA_SABER_DARK = "${S.palette.dark}"`);
+  lines.push(`QUOTA_SABER_METAL_TOP = "${S.palette.metalTop}"`);
+  lines.push(`QUOTA_SABER_METAL_BOTTOM = "${S.palette.metalBottom}"`);
+  lines.push(`QUOTA_SABER_METAL_RIDGE = "${S.palette.ridge}"`);
+  lines.push(`QUOTA_SABER_METAL_POMMEL = "${S.palette.pommel}"`);
+  lines.push(`QUOTA_SABER_METAL_EDGE = "${S.palette.edge}"`);
+  lines.push(`QUOTA_SABER_SHROUD_TOP = "${S.palette.shroudTop}"`);
+  lines.push(`QUOTA_SABER_SHROUD_BOTTOM = "${S.palette.shroudBottom}"`);
+  lines.push(`QUOTA_SABER_SHROUD_EDGE = "${S.palette.shroudEdge}"`);
+  lines.push(`QUOTA_SABER_BUTTON = "${S.palette.button}"`);
+  lines.push("/* card */");
+  lines.push(`sidebar formatter maxWidth = ${maxWidth}   (bar cells ${S.saber.barCells} + 2 + label 9) -> width patch value`);
+  lines.push(`font for playback: ${S.view.font} @ ${S.view.fontSize}px, cell height x${S.view.chFactor} (display only)`);
+  lines.push("");
+  lines.push("/* JSON (settings snapshot) */");
+  lines.push(JSON.stringify({ data: S.data, saber: S.saber, theme: S.theme, palette: S.palette }, null, 2));
+  return lines.join("\n");
+}
+
+// ---------------------------------------------------------------------------
+// controls
+// ---------------------------------------------------------------------------
+function ctlSpecs() {
+  const specs = [];
+  const add = (group, label, knob, get, set, opts = {}) => specs.push({ group, label, knob, get, set, ...opts });
+  const num = (o, min, max, step) => ({ type: "num", min, max, step, ...o });
+  const color = () => ({ type: "color" });
+
+  add("Saber geometry", "canvas rows", "QUOTA_SABER_BLOCK_ROWS", () => S.saber.blockRows, (v) => { S.saber.blockRows = Math.max(2, Math.min(20, Math.round(v))); save(); }, { type: "range", min: 4, max: 16, step: 2 });
+  add("Saber geometry", "view start row", "QUOTA_SABER_VIEW_ROWS", () => S.saber.viewStart, (v) => { S.saber.viewStart = Math.max(0, Math.min(19, Math.round(v))); save(); }, { type: "range", min: 0, max: 15, step: 1 });
+  add("Saber geometry", "view row count", "QUOTA_SABER_VIEW_ROWS", () => S.saber.viewCount, (v) => { S.saber.viewCount = Math.max(1, Math.min(12, Math.round(v))); save(); }, { type: "range", min: 1, max: 8, step: 1 });
+  add("Saber geometry", "label row", "QUOTA_SABER_LABEL_ROW", () => S.saber.labelRow, (v) => { S.saber.labelRow = Math.max(0, Math.min(19, Math.round(v))); save(); }, { type: "range", min: 0, max: 15, step: 1 });
+  add("Saber geometry", "bar cells", "width patch (maxWidth = cells+11)", () => S.saber.barCells, (v) => { S.saber.barCells = Math.max(10, Math.min(30, Math.round(v))); save(); }, { type: "range", min: 10, max: 30, step: 1 });
+  add("Saber geometry", "blade px (0=auto)", "QUOTA_SABER_BLADE_PX", () => S.saber.bladePx, (v) => { S.saber.bladePx = Math.max(0, Math.min(16, Math.round(v))); save(); }, { type: "range", min: 0, max: 16, step: 1 });
+  add("Saber geometry", "hilt px (0=auto)", "QUOTA_SABER_HILT_PX", () => S.saber.hiltPx, (v) => { S.saber.hiltPx = Math.max(0, Math.min(14, Math.round(v))); save(); }, { type: "range", min: 0, max: 14, step: 1 });
+  add("Saber look", "tip nub", "QUOTA_SABER_NUB", () => S.saber.nub, (v) => { S.saber.nub = Number(v); save(); }, { type: "range", min: 0, max: 1.5, step: 0.05 });
+  add("Saber look", "plasma x", "QUOTA_SABER_PLASMA", () => S.saber.plasma, (v) => { S.saber.plasma = Number(v); save(); }, { type: "range", min: 0, max: 3, step: 0.05 });
+  add("Saber look", "halo x", "QUOTA_SABER_HALO", () => S.saber.halo, (v) => { S.saber.halo = Number(v); save(); }, { type: "range", min: 0, max: 3, step: 0.05 });
+  add("Saber look", "spill x", "QUOTA_SABER_SPILL", () => S.saber.spill, (v) => { S.saber.spill = Number(v); save(); }, { type: "range", min: 0, max: 3, step: 0.05 });
+  add("Animation", "speed", "QUOTA_SABER_SPEED", () => S.saber.speed, (v) => { S.saber.speed = Number(v); save(); }, { type: "range", min: 0.25, max: 6, step: 0.05 });
+  add("Animation", "phase scrub", "display only", () => phase, (v) => { phase = Math.round(v); render(); }, { type: "range", min: 0, max: 1000, step: 1 });
+
+  for (let i = 0; i < 3; i++) {
+    add("Window " + (i + 1), "name", "server data", () => S.data.windows[i].name, (v) => { S.data.windows[i].name = String(v).slice(0, 12); save(); }, { type: "text" });
+    add("Window " + (i + 1), "percent", "server data", () => S.data.windows[i].percent, (v) => { S.data.windows[i].percent = Math.max(0, Math.min(100, Math.round(v))); save(); }, { type: "range", min: 0, max: 100, step: 1 });
+    add("Window " + (i + 1), "countdown", "server data", () => S.data.windows[i].time, (v) => { S.data.windows[i].time = String(v).slice(0, 12); save(); }, { type: "text" });
+    add("Window " + (i + 1), "mode", "server data", () => S.data.windows[i].mode, (v) => { S.data.windows[i].mode = v === "used" ? "used" : "left"; save(); }, { type: "select", options: ["left", "used"] });
+  }
+
+  add("Card + tokens", "group header", "server data", () => S.data.group, (v) => { S.data.group = String(v).slice(0, 24); save(); }, { type: "text" });
+  add("Card + tokens", "card title", "server data", () => S.data.title, (v) => { S.data.title = String(v).slice(0, 24); save(); }, { type: "text" });
+  add("Card + tokens", "show tokens", "server data", () => S.data.tokens.show, (v) => { S.data.tokens.show = Boolean(v); save(); }, { type: "check" });
+  add("Card + tokens", "model name", "server data", () => S.data.tokens.model, (v) => { S.data.tokens.model = String(v).slice(0, 28); save(); }, { type: "text" });
+  add("Card + tokens", "tokens in", "server data", () => S.data.tokens.input, (v) => { S.data.tokens.input = Math.max(0, Math.round(v)); save(); }, num({}, 0, 100000000, 1000));
+  add("Card + tokens", "tokens cached", "server data", () => S.data.tokens.cached, (v) => { S.data.tokens.cached = Math.max(0, Math.round(v)); save(); }, num({}, 0, 100000000, 1000));
+  add("Card + tokens", "tokens out", "server data", () => S.data.tokens.output, (v) => { S.data.tokens.output = Math.max(0, Math.round(v)); save(); }, num({}, 0, 100000000, 1000));
+
+  add("Theme (orng resolved)", "text base", "theme.text.base", () => S.theme.textBase, (v) => { S.theme.textBase = v; save(); }, color());
+  add("Theme (orng resolved)", "text muted", "theme.text.muted", () => S.theme.muted, (v) => { S.theme.muted = v; save(); }, color());
+  add("Theme (orng resolved)", "accent (countdown)", "theme.text.action.primary.selected", () => S.theme.accent, (v) => { S.theme.accent = v; save(); }, color());
+  add("Theme (orng resolved)", "success", "theme.text.feedback.success.base", () => S.theme.success, (v) => { S.theme.success = v; save(); }, color());
+  add("Theme (orng resolved)", "warning", "theme.text.feedback.warning.base", () => S.theme.warning, (v) => { S.theme.warning = v; save(); }, color());
+  add("Theme (orng resolved)", "error", "theme.text.feedback.error.base", () => S.theme.error, (v) => { S.theme.error = v; save(); }, color());
+  add("Theme (orng resolved)", "info (tokens in)", "theme.text.feedback.info.base", () => S.theme.info, (v) => { S.theme.info = v; save(); }, color());
+  add("Theme (orng resolved)", "card border", "theme.border.base", () => S.theme.border, (v) => { S.theme.border = v; save(); }, color());
+  add("Theme (orng resolved)", "page background", "theme.background.base", () => S.theme.pageBg, (v) => { S.theme.pageBg = v; save(); }, color());
+
+  add("Saber palette", "dark / void", "QUOTA_SABER_DARK", () => S.palette.dark, (v) => { S.palette.dark = v; save(); }, color());
+  add("Saber palette", "metal top", "QUOTA_SABER_METAL_TOP", () => S.palette.metalTop, (v) => { S.palette.metalTop = v; save(); }, color());
+  add("Saber palette", "metal bottom", "QUOTA_SABER_METAL_BOTTOM", () => S.palette.metalBottom, (v) => { S.palette.metalBottom = v; save(); }, color());
+  add("Saber palette", "grip ridge", "QUOTA_SABER_METAL_RIDGE", () => S.palette.ridge, (v) => { S.palette.ridge = v; save(); }, color());
+  add("Saber palette", "pommel", "QUOTA_SABER_METAL_POMMEL", () => S.palette.pommel, (v) => { S.palette.pommel = v; save(); }, color());
+  add("Saber palette", "metal edge", "QUOTA_SABER_METAL_EDGE", () => S.palette.edge, (v) => { S.palette.edge = v; save(); }, color());
+  add("Saber palette", "shroud top", "QUOTA_SABER_SHROUD_TOP", () => S.palette.shroudTop, (v) => { S.palette.shroudTop = v; save(); }, color());
+  add("Saber palette", "shroud bottom", "QUOTA_SABER_SHROUD_BOTTOM", () => S.palette.shroudBottom, (v) => { S.palette.shroudBottom = v; save(); }, color());
+  add("Saber palette", "shroud edge", "QUOTA_SABER_SHROUD_EDGE", () => S.palette.shroudEdge, (v) => { S.palette.shroudEdge = v; save(); }, color());
+  add("Saber palette", "power button", "QUOTA_SABER_BUTTON", () => S.palette.button, (v) => { S.palette.button = v; save(); }, color());
+
+  add("Rendering", "font", "display only", () => S.view.font, (v) => { S.view.font = v; save(); measureCells(); }, { type: "select", options: ["Cascadia Mono", "Consolas", "Courier New", "JetBrains Mono"] });
+  add("Rendering", "font size px", "display only", () => S.view.fontSize, (v) => { S.view.fontSize = Math.max(8, Math.min(30, Math.round(v))); save(); measureCells(); }, { type: "range", min: 8, max: 30, step: 1 });
+  add("Rendering", "cell height x", "1 = font-exact tiling", () => S.view.chFactor, (v) => { S.view.chFactor = Number(v); save(); }, { type: "range", min: 0.8, max: 1.8, step: 0.01 });
+  add("Rendering", "cell grid", "display only", () => S.view.grid, (v) => { S.view.grid = Boolean(v); save(); }, { type: "check" });
+  add("Rendering", "show border", "display only", () => S.view.showBorder, (v) => { S.view.showBorder = Boolean(v); save(); }, { type: "check" });
+  add("Rendering", "show header", "display only", () => S.view.showHeader, (v) => { S.view.showHeader = Boolean(v); save(); }, { type: "check" });
+  add("Rendering", "freeze animation", "display only", () => frozen, (v) => { frozen = Boolean(v); }, { type: "check" });
+  return specs;
+}
+
+function buildControls() {
+  const root = document.getElementById("controls");
+  root.innerHTML = "";
+  let lastGroup = null;
+  for (const spec of ctlSpecs()) {
+    if (spec.group !== lastGroup) {
+      const h = document.createElement("h3");
+      h.textContent = spec.group;
+      root.appendChild(h);
+      lastGroup = spec.group;
+    }
+    const rowEl = document.createElement("div");
+    rowEl.className = "row";
+    const labelEl = document.createElement("label");
+    labelEl.textContent = spec.label;
+    const knobEl = document.createElement("span");
+    knobEl.className = "knob";
+    knobEl.textContent = spec.knob;
+    labelEl.appendChild(knobEl);
+    rowEl.appendChild(labelEl);
+
+    const ctlEl = document.createElement("div");
+    ctlEl.className = "ctl";
+    let input;
+    if (spec.type === "range") {
+      input = document.createElement("input");
+      input.type = "range";
+      input.min = spec.min; input.max = spec.max; input.step = spec.step;
+      input.value = spec.get();
+    } else if (spec.type === "num") {
+      input = document.createElement("input");
+      input.type = "number";
+      input.min = spec.min; input.max = spec.max; input.step = spec.step;
+      input.value = spec.get();
+    } else if (spec.type === "color") {
+      input = document.createElement("input");
+      input.type = "color";
+      input.value = spec.get();
+    } else if (spec.type === "check") {
+      input = document.createElement("input");
+      input.type = "checkbox";
+      input.checked = Boolean(spec.get());
+    } else if (spec.type === "select") {
+      input = document.createElement("select");
+      for (const option of spec.options) {
+        const optEl = document.createElement("option");
+        optEl.value = option; optEl.textContent = option;
+        input.appendChild(optEl);
+      }
+      input.value = spec.get();
+    } else {
+      input = document.createElement("input");
+      input.type = "text";
+      input.value = spec.get();
+    }
+    input.addEventListener("input", () => {
+      spec.set(input.type === "checkbox" ? input.checked : input.value);
+      refresh();
+    });
+    ctlEl.appendChild(input);
+    rowEl.appendChild(ctlEl);
+    root.appendChild(rowEl);
+  }
+}
+
+function refresh() {
+  renderCard();
+  exportEl.value = buildExport();
+}
+
+document.getElementById("copyBtn").addEventListener("click", async () => {
+  try {
+    await navigator.clipboard.writeText(exportEl.value);
+    document.getElementById("copyBtn").textContent = "Copied!";
+    setTimeout(() => { document.getElementById("copyBtn").textContent = "Copy settings"; }, 1200);
+  } catch { exportEl.select(); document.execCommand("copy"); }
+});
+document.getElementById("resetBtn").addEventListener("click", () => {
+  try { localStorage.removeItem(STORE_KEY); localStorage.removeItem(STORE_KEY + ":phase"); } catch { /* ignore */ }
+  location.reload();
+});
+
+measureCells();
+buildControls();
+refresh();
+if (document.fonts && document.fonts.ready) {
+  document.fonts.ready.then(() => { measureCells(); renderCard(); }).catch(() => {});
+}
+setInterval(() => {
+  if (frozen) return;
+  phase = (phase + 1) % 100000;
+  try { localStorage.setItem(STORE_KEY + ":phase", String(phase)); } catch { /* ignore */ }
+  renderCard();
+}, 120);
+</script>
+</body>
+</html>

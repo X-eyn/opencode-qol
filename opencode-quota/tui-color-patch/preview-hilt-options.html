@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Sidebar bar — hilt / track comparison (real glyphs)</title>
+<style>
+  :root { --bg:#141210; --card:#1d1a16; --edge:#3a332c; --text:#cfc6bb; --muted:#8a7f74; --accent:#e8863c; }
+  * { box-sizing: border-box; }
+  body { margin:0; padding:26px 22px 60px; background:var(--bg); color:var(--text);
+         font-family: Consolas, "Cascadia Mono", "JetBrains Mono", "Courier New", monospace; }
+  h1 { font-size:19px; margin:0 0 6px; }
+  .intro { color:var(--muted); font-size:13px; line-height:1.7; max-width:960px; }
+  .intro b { color:var(--accent); }
+  .toolbar { margin:16px 0 20px; color:var(--muted); font-size:12.5px; }
+  .toolbar input { accent-color: var(--accent); }
+  .opt { background:var(--card); border:1px solid var(--edge); border-radius:10px;
+         padding:14px 16px 12px; margin:0 0 14px; max-width:960px; }
+  .opt h2 { font-size:14px; margin:0 0 2px; }
+  .opt h2 .tag { color:var(--accent); font-size:11px; border:1px solid #4a3c2c; border-radius:4px;
+                 padding:1px 6px; margin-left:8px; vertical-align:2px; }
+  .opt .desc { color:var(--muted); font-size:12px; margin:0 0 10px; line-height:1.55; }
+  .rowbox { background:#191510; border-radius:6px; padding:6px 0 6px 6px; overflow-x:auto; }
+  .row { font-size:17px; line-height:1.25; white-space:pre; }
+  .row.zoom { font-size:33px; line-height:1.15; margin-top:4px; }
+  .row .cellgrid span { outline:1px solid rgba(255,255,255,0.14); }
+  .foot { color:#6f665c; font-size:12px; max-width:960px; line-height:1.7; }
+</style>
+</head>
+<body>
+
+<h1>Sidebar bar — hilt &amp; track comparison (real glyphs, real colors)</h1>
+<p class="intro">
+  This is the <b>actual rendering technique</b> your terminal uses: one glyph per cell, the real theme colors,
+  at real cell proportions (and a 2× zoom below each). Nothing here is stylized — if a row looks good on this
+  page, it will look like that in the sidebar. <b>Point at the row that&rsquo;s right</b> (or send a screenshot
+  of your terminal if any glyph shows as a box — that means your font lacks it and we skip that option).<br><br>
+  The beam is the live quota; everything left of it is the hilt; the empty part is the track.
+</p>
+
+<div class="toolbar">
+  <label><input id="grid" type="checkbox"> show cell boundaries</label>
+</div>
+
+<div id="rows"></div>
+
+<p class="foot">
+  Row 1 is what your sidebar has <b>right now</b> (just changed). Rows below are alternatives — if one of them
+  reads better, name it and I&rsquo;ll apply it in one change. Also: a screenshot of your current sidebar would
+  let me see exactly what went wrong instead of inferring it.
+</p>
+
+<script>
+"use strict";
+
+/* exact same math + colors as the TUI patch */
+const CARD = "#1d1a16";
+const BLUE = "#7aa5f8", ORANGE = "#f08a3c";
+const HILT_COLORS = { pommel: "#6a6a6a", button: "#4dff88", emitter: "#d8d8d8", handleBg: "#6a6a6a" };
+
+function hexToRgb(hex) {
+  const m = hex.trim().match(/^#?([0-9a-f]{3}|[0-9a-f]{6})$/i);
+  if (!m) return null;
+  let h = m[1];
+  if (h.length === 3) h = h[0]+h[0]+h[1]+h[1]+h[2]+h[2];
+  return [parseInt(h.slice(0,2),16), parseInt(h.slice(2,4),16), parseInt(h.slice(4,6),16)];
+}
+function mix(a, b, t) {
+  const x = hexToRgb(a), y = hexToRgb(b);
+  const c = x.map((v,i) => Math.max(0, Math.min(255, Math.round(v + (y[i]-v)*t))));
+  return "#" + c.map(v => v.toString(16).padStart(2,"0")).join("");
+}
+const coreOf  = (bucket) => mix("#ffffff", bucket, 0.06);
+const glowOf  = (bucket) => mix(bucket, "#ffffff", 0.16);
+const slotOf  = (bucket) => mix(CARD, bucket, 0.2);
+
+function span(g, fg, bg) {
+  const b = bg ? `;background:${bg}` : "";
+  return `<span style="color:${fg}${b}">${g}</span>`;
+}
+
+function hiltCell(hilt, c, count) {
+  if (hilt === "applied") {
+    if (c === 0 && count > 1) return { g: "▇", fg: HILT_COLORS.pommel };
+    if (c === count - 1) return { g: "▇", fg: HILT_COLORS.emitter };
+    return { g: "▪", fg: HILT_COLORS.button, bg: HILT_COLORS.handleBg };
+  }
+  if (hilt === "rect") {
+    if (c === 0 && count > 1) return { g: "▬", fg: HILT_COLORS.pommel };
+    if (c === count - 1) return { g: "▬", fg: HILT_COLORS.emitter };
+    return { g: "▬", fg: HILT_COLORS.button };
+  }
+  if (hilt === "full") {
+    if (c === 0 && count > 1) return { g: "▀", fg: "#7f7f7f", bg: "#3f3f3f" };
+    if (c === count - 1) return { g: "▀", fg: HILT_COLORS.emitter, bg: "#8f8f8f" };
+    return { g: "▪", fg: HILT_COLORS.button, bg: "#4f4f4f" };
+  }
+  return { g: " ", fg: "#777" };
+}
+
+function trackCell(track, bucket) {
+  if (track === "band") return { g: "▁", fg: slotOf(bucket) };
+  if (track === "rect") return { g: "▬", fg: slotOf(bucket) };
+  if (track === "half") return { g: "▄", fg: slotOf(bucket) };
+  return null;
+}
+
+function rowHtml(opt, percent, bucket, width = 21) {
+  const hiltCount = 3;
+  const bladeEnd = hiltCount * 2 + (width - hiltCount) * 2 * (percent / 100);
+  let out = "";
+  for (let c = 0; c < width; c++) {
+    if (c < hiltCount) {
+      const s = hiltCell(opt.hilt, c, hiltCount);
+      out += span(s.g, s.fg, s.bg);
+      continue;
+    }
+    const sub = c * 2 + 1;
+    if (sub <= bladeEnd) {
+      out += span("▀", coreOf(bucket), glowOf(bucket));
+      continue;
+    }
+    const t = trackCell(opt.track, bucket);
+    out += t ? span(t.g, t.fg, t.bg) : " ";
+  }
+  const label = `${percent}% left`.padStart(9);
+  const pre = label.slice(0, label.indexOf(`${percent}%`));
+  const post = label.slice(label.indexOf(`${percent}%`) + `${percent}%`.length);
+  out += "  " + (pre ? `<span style="color:${"#8a7f74"}">${pre}</span>` : "")
+       + `<span style="color:${bucket}">${percent}%</span>`
+       + `<span style="color:#8a7f74">${post}</span>`;
+  return out;
+}
+
+const options = [
+  { hilt: "applied", track: "band", title: "JUST APPLIED — chunky handle (▇) + small button (▪) + floor line (▁)", tag: "your sidebar now",
+    desc: "Hilt = lower-seven-eighths block: a solid metal handle ~2px thinner than the beam (same ratio as the preview). Button = small green square embedded in the metal. Empty track = a subtle floor line at the bottom." },
+  { hilt: "rect", track: "rect", title: "▬ centered rectangle hilt + ▬ track", tag: "alt 1",
+    desc: "Hilt uses the centered rectangle glyph: perfectly uniform thinness on both sides, but noticeably thinner than the beam and less 'handle'-like." },
+  { hilt: "full", track: "half", title: "▀ full-height two-tone hilt + ▄ dim track", tag: "alt 2",
+    desc: "The original approach: hilt exactly as tall as the beam, simulated with two grey shades. Chunkiest, but not thinner than the beam." },
+  { hilt: "rect", track: "none", title: "▬ centered hilt, no track at all", tag: "alt 3",
+    desc: "Closest to the design image, where nothing else was drawn in the empty space — the beam floats on the card. Only the label tells you the total." },
+  { hilt: "applied", track: "none", title: "▇ chunky handle, no track at all", tag: "alt 4",
+    desc: "The applied hilt, but with the floor line removed — the empty area is completely blank like the design image." },
+];
+
+const rowsEl = document.getElementById("rows");
+for (const opt of options) {
+  const div = document.createElement("div");
+  div.className = "opt";
+  div.innerHTML =
+    `<h2>${opt.title}<span class="tag">${opt.tag}</span></h2>` +
+    `<p class="desc">${opt.desc}</p>` +
+    `<div class="rowbox"><div class="row">${rowHtml(opt, 95, BLUE)}</div>` +
+    `<div class="row">${rowHtml(opt, 38, ORANGE)}</div>` +
+    `<div class="row">${rowHtml(opt, 68, ORANGE)}</div>` +
+    `<div class="row zoom">${rowHtml(opt, 95, BLUE)}</div>` +
+    `<div class="row zoom">${rowHtml(opt, 38, ORANGE)}</div></div>`;
+  rowsEl.appendChild(div);
+}
+
+document.getElementById("grid").addEventListener("change", (e) => {
+  document.querySelectorAll(".row").forEach((r) => r.classList.toggle("cellgrid", e.target.checked));
+});
+</script>
+</body>
+</html>

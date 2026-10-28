@@ -1,0 +1,27 @@
+<!doctype html><meta charset=utf-8><title>PixelSea zoom</title>
+<body style="background:#121212;margin:0;padding:12px;font:13px Consolas,monospace;color:#888">
+<div id=out></div>
+<script src="sea.js"></script>
+<script>
+// 4x crops of the real frames, nearest-neighbour, to inspect pixel art
+const W = 330, H = 20, Z = 4, CW = 190
+const views = [["M 52% shore", 52, 3, 130], ["X 75% shore", 75, 3, 140], ["W 96% shore", 96, 2, 140], ["5h 25% shore", 25, 1, 0]]
+const out = document.getElementById("out")
+const items = views.map(([name, pct, seed, x0]) => {
+  const lab = document.createElement("div"); lab.textContent = name + "  (x " + x0 + "–" + (x0 + CW) + ")"
+  const c = document.createElement("canvas"); c.width = CW * Z; c.height = H * Z; c.style.cssText = "display:block;margin:2px 0 10px;image-rendering:pixelated"
+  out.append(lab, c)
+  const off = document.createElement("canvas"); off.width = W; off.height = H
+  const sea = new PixelSea(W, H, seed, THEMES[new URLSearchParams(location.search).get("theme") || "miami"]); sea.setPercent(pct)
+  const ctx = c.getContext("2d"); ctx.imageSmoothingEnabled = false
+  return { sea, x0, ctx, off, octx: off.getContext("2d"), img: new ImageData(W, H) }
+})
+let last = performance.now()
+setInterval(() => {
+  const now = performance.now(), dt = (now - last) / 1000; last = now
+  for (const it of items) {
+    it.sea.step(dt); it.sea.render(it.img.data); it.octx.putImageData(it.img, 0, 0)
+    it.ctx.drawImage(it.off, it.x0, 0, CW, H, 0, 0, CW * Z, H * Z)
+  }
+}, 80)
+</script>

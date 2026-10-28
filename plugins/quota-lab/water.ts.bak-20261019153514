@@ -1,0 +1,685 @@
+// Turquoise water-tank engine — exact port of the validated V20 fire.js block,
+// extended for multi-row rendering: the engine produces per-column surface
+// data (height, foam, spray, caps), and the renderers map that to either a
+// single row of eighth-block cells (legacy / compact) or a BLOCK of rows with
+// a depth-faded water body, surface band and whitecaps.
+//
+// Physics: 12 standing modes each an opposite-travelling pair (exact
+// wave-equation solution), deep-water dispersion (omega ~ sqrt(n)), reflecting
+// walls with clapotis antinodes, Stokes crest sharpening, coherent capillary
+// ripples, and wall-impact splash micro-physics: surface-history impact
+// detection, run-up overshoot, rebound jet, ballistic ejecta train, clinging
+// run-down, wake-aware coherent foam.
+
+export const BAR_CELLS = 21
+export const SPEED = 2.25
+
+const EIGHTHS = ["\u2581", "\u2582", "\u2583", "\u2584", "\u2585", "\u2586", "\u2587", "\u2588"]
+const PAL: [number, string][] = [[0, "#06272b"], [0.53, "#28b5ad"], [1, "#a0f0e4"]]
+const FOAM_FG = "#e8fffb"
+const CAP_BASE = "#5fc8bd"
+const CAP_TOP = "#ffffff"
+const DEEP = "#06272b"
+const T_SCALE = 0.5
+const GAIN = 0.6
+const W0 = 0.26
+const LAG = 12
+const FOAM_AT = 0.8
+const SPRAY = 0.12
+const RISE_MIN = 0.11
+const RISE_MAX = 0.32
+
+export type Cell = { g: string; fg?: string; bg?: string }
+
+function clamp(v: number, a: number, b: number): number {
+  return Math.max(a, Math.min(b, v))
+}
+function toInts(hex: string): [number, number, number] {
+  const h = hex.replace("#", "")
+  return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)]
+}
+function toHex(ints: number[]): string {
+  return `#${ints
+    .map((v) => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, "0"))
+    .join("")}`
+}
+function mix(a: string, b: string, t: number): string {
+  const x = toInts(a)
+  const y = toInts(b)
+  return toHex(x.map((v, i) => v + (y[i] - v) * t))
+}
+function scale(hex: string, f: number): string {
+  return toHex(toInts(hex).map((v) => v * f))
+}
+function hash(n: number): number {
+  const s = Math.sin(n * 127.1 + 311.7) * 43758.5453
+  return s - Math.floor(s)
+}
+function grade(stops: [number, string][], t: number): string {
+  if (t <= stops[0][0]) return stops[0][1]
+  for (let k = 1; k < stops.length; k++) {
+    if (t <= stops[k][0]) {
+      const a = stops[k - 1]
+      const b = stops[k]
+      const span = Math.max(1e-6, b[0] - a[0])
+      return mix(a[1], b[1], (t - a[0]) / span)
+    }
+  }
+  return stops[stops.length - 1][1]
+}
+function slotColor(bucket: string): string {
+  return mix("#0a0a0a", bucket, 0.24)
+}
+
+type ColumnData = {
+  spent: boolean
+  h: number
+  lvl: number
+  baseFg: string
+  fg: string
+  capBg?: string
+  spray: number
+}
+
+// One pass of the whole engine per column: returns the surface state that
+// every renderer (1-row or multi-row) draws from.
+export function tankColumns(width: number, percent: number, phase: number): ColumnData[] {
+  const T = phase * SPEED
+  const filled = Math.round((percent / 100) * width)
+  const W = Math.max(1, filled - 1)
+  const N = 12
+  const A: number[] = []
+  const P: number[] = []
+  const om: number[] = []
+  let sumsq = 0
+  for (let n = 1; n <= N; n++) {
+    const w = n === 1 ? 1.7 : n === 2 ? 0.8 : n === 3 ? 0.45 : n === 4 ? 0.35 : n <= 8 ? 0.2 : 0.1
+    const a = w * (0.6 + 0.4 * hash(n * 3.77))
+    A.push(a)
+    P.push(hash(n * 9.13) * Math.PI * 2)
+    om.push(W0 * Math.sqrt(n) * T_SCALE)
+    sumsq += a * a
+  }
+  const norm = Math.max(1e-6, Math.sqrt(sumsq / 2))
+  const ripples = (t: number, x: number): number =>
+    0.03 * Math.sin((x * 2.5 + t * 0.1) * Math.PI * 2) +
+    0.02 * Math.sin((x * 4.5 - t * 0.14) * Math.PI * 2)
+  const wallH = (t: number, side: number): number => {
+    let u = 0
+    for (let m = 0; m < N; m++) {
+      const n = m + 1
+      const sp = side === 0 || n % 2 === 0 ? 1 : -1
+      u += A[m] * sp * Math.cos(om[m] * t + P[m])
+    }
+    const uu = (u / norm) * GAIN
+    return clamp(0.5 + (uu + 0.32 * uu * uu + ripples(t, side)) * 0.6, 0, 1)
+  }
+  const SCAN = 30
+  const STEPT = 2
+  const impactOf = (side: number): { mag: number; age: number } => {
+    let best = 0
+    let bestAge = 0
+    let hPrev = wallH(T, side)
+    for (let k = 0; k <= SCAN; k++) {
+      const age = k * STEPT
+      const hNext = wallH(T - age - STEPT, side)
+      const rise = hPrev - hNext
+      if (rise > best) {
+        best = rise
+        bestAge = age
+      }
+      hPrev = hNext
+    }
+    return { mag: clamp((best - RISE_MIN) / (RISE_MAX - RISE_MIN), 0, 1), age: bestAge }
+  }
+  const impL = impactOf(0)
+  const impR = impactOf(1)
+  const trainPos = (age: number): number => 0.4 + 0.22 * age - 0.0035 * age * age
+  const seed = Math.floor(T * 0.5)
+  const columns: ColumnData[] = []
+  for (let i = 0; i < width; i++) {
+    if (i >= filled) {
+      columns.push({ spent: true, h: 0, lvl: 1, baseFg: "#000000", fg: "#000000", spray: 0 })
+      continue
+    }
+    const x = i / W
+    let uA = 0
+    let uB = 0
+    for (let m = 0; m < N; m++) {
+      const n = m + 1
+      const base = Math.cos(Math.PI * n * x)
+      uA += A[m] * base * Math.cos(om[m] * T + P[m])
+      uB += A[m] * base * Math.cos(om[m] * (T - LAG) + P[m])
+    }
+    const mk = (u: number): number => {
+      let v = u + 0.32 * u * u
+      v += ripples(T, x)
+      return clamp(0.5 + v * 0.6, 0, 1)
+    }
+    const h = mk((uA / norm) * GAIN)
+    const hLag = mk((uB / norm) * GAIN)
+    const dL = i
+    const dR = W - i
+    const xsL = trainPos(impL.age)
+    const xsR = trainPos(impR.age)
+    const gateL = clamp((impL.mag - 0.2) / 0.5, 0, 1)
+    const gateR = clamp((impR.mag - 0.2) / 0.5, 0, 1)
+    const sprayL = gateL * Math.exp(-impL.age / 16) * Math.exp(-((dL - xsL) * (dL - xsL)) / 2.42)
+    const sprayR = gateR * Math.exp(-impR.age / 16) * Math.exp(-((dR - xsR) * (dR - xsR)) / 2.42)
+    const run =
+      0.16 *
+      (impL.mag * Math.exp(-impL.age / 14) * Math.exp(-dL / 1.8) + impR.mag * Math.exp(-impR.age / 14) * Math.exp(-dR / 1.8))
+    const cling =
+      0.05 *
+      ((impL.age > 8 ? impL.mag * Math.exp(-(impL.age - 8) / 20) : 0) * Math.exp(-dL / 2.2) +
+        (impR.age > 8 ? impR.mag * Math.exp(-(impR.age - 8) / 20) : 0) * Math.exp(-dR / 2.2))
+    const foam = impL.mag * Math.exp(-impL.age / 20) * Math.exp(-dL / 1.5) + impR.mag * Math.exp(-impR.age / 20) * Math.exp(-dR / 1.5)
+    const spray = sprayL + sprayR
+    const rip = spray * 0.05 * Math.sin(dL * 2.2 - T * 1.1)
+    const jet = impL.mag * Math.exp(-impL.age / 2.6) * Math.exp(-dL / 1.1) + impR.mag * Math.exp(-impR.age / 2.6) * Math.exp(-dR / 1.1)
+    // ---- water column (exact lab math; foam is wake-aware and coherent) ----
+    const h2 = clamp(h + run + cling + rip, 0, 1)
+    const lvl = clamp(Math.round(2 + h2 * 6), 2, 8)
+    const baseFg = grade(PAL, h2)
+    const foamAt = FOAM_AT - 0.22 * foam
+    const foamH = Math.max(h2, hLag * 0.96 + foam * 0.25)
+    const foamI = clamp((foamH - foamAt) / 0.16, 0, 1) * clamp(h2 * 1.6, 0.3, 1)
+    if (foamI < 0.05 && jet < 0.3 && spray < 0.3) {
+      columns.push({ spent: false, h: h2, lvl, baseFg, fg: baseFg, spray })
+      continue
+    }
+    const churn = Math.sin(T * 1.25 + i * 0.5) * 0.5 + Math.sin(T * 2.1 - i * 0.9) * 0.25
+    const fg = mix(baseFg, FOAM_FG, clamp(foamI * 0.95 + churn * 0.1 + spray * 0.3, 0, 1) * 0.85)
+    const cap = clamp(foamI * 1.15 + churn * 0.25 + spray * 0.75 + jet * 1.25, 0, 1) * clamp((h2 - 0.3) / 0.5, 0, 1)
+    let capBg: string | undefined
+    if (cap > 0.04) {
+      capBg = mix(CAP_BASE, CAP_TOP, Math.pow(cap, 0.7))
+      const popChance = Math.min(0.85, SPRAY * 0.5 + jet * 0.4 + spray * 0.25)
+      if (cap > 0.68 && popChance > 0 && hash(i * 5.3 + seed * 7.9) > 1 - popChance) capBg = "#ffffff"
+      else if (SPRAY > 0 && cap > 0.8 && churn > 0.58) capBg = "#ffffff"
+    }
+    columns.push({ spent: false, h: h2, lvl, baseFg, fg, capBg, spray })
+  }
+  // Side-channel for scene renders: the wall impact states (the right wall of
+  // the tank IS the tide line when the tank is laid across a shoreline).
+  ;(columns as unknown as { impacts?: unknown }).impacts = { L: impL, R: impR }
+  return columns
+}
+
+// Single-row render (compact): the validated 1xN look.
+export function tankCells(width: number, percent: number, bucket: string, phase: number): Cell[] {
+  return tankColumns(width, percent, phase).map((c) => {
+    if (c.spent) return { g: "\u2581", fg: slotColor(bucket) }
+    const glyph = EIGHTHS[c.lvl - 1]
+    return c.capBg !== undefined ? { g: glyph, fg: c.fg, bg: c.capBg } : { g: glyph, fg: c.fg }
+  })
+}
+
+// Multi-row render: the bar becomes a block of sea. The water surface lives
+// in a band near the top of the block (SURF_LO..SURF_LO+SURF_SPAN of the
+// height) so the block reads as a thick body of water with the wave riding on
+// top, not terrain. The surface row carries the full art treatment (wave
+// color, foam, whitecap backgrounds); rows below are the depth-faded body;
+// the spent zone keeps a floor line.
+const SURF_LO = 0.42
+const SURF_SPAN = 0.5
+
+export function tankBarRows(width: number, rows: number, percent: number, phase: number, bucket: string): Cell[][] {
+  const cols = tankColumns(width, percent, phase)
+  const total = rows * 8
+  const grid: Cell[][] = Array.from({ length: rows }, () => [])
+  for (let i = 0; i < width; i++) {
+    const c = cols[i]
+    if (c.spent) {
+      const slot = slotColor(bucket)
+      for (let r = 0; r < rows; r++) {
+        grid[r].push(r === rows - 1 ? { g: "\u2581", fg: slot } : { g: " " })
+      }
+      continue
+    }
+    const H = (SURF_LO + clamp(c.h, 0, 1) * SURF_SPAN) * total
+    const rSurf = clamp(Math.floor((total - H) / 8), 0, rows - 1)
+    for (let r = 0; r < rows; r++) {
+      if (r < rSurf) {
+        grid[r].push({ g: " " })
+        continue
+      }
+      const below = (rows - 1 - r) * 8
+      const fill = clamp(H - below, 0, 8)
+      const glyph = EIGHTHS[clamp(Math.round(fill), 1, 8) - 1]
+      if (r === rSurf) {
+        grid[r].push(c.capBg !== undefined ? { g: glyph, fg: c.fg, bg: c.capBg } : { g: glyph, fg: c.fg })
+      } else {
+        const depth = r - rSurf
+        grid[r].push({ g: glyph, fg: mix(c.fg, DEEP, clamp(depth * 0.3, 0, 0.72)) })
+      }
+    }
+  }
+  return grid
+}
+
+// ---- braille pixel canvas (2x4 addressable pixels per cell) ----
+// The finest grid a terminal physically offers: a cell becomes a 2x4 dot
+// matrix, so a 21-cell bar is a 42x4 pixel bitmap. Water is painted dot by
+// dot with a dithered (shimmering) surface boundary; spray lights the top
+// pixel above cresting columns; spent cells keep a dotted floor line.
+const BRAILLE_BITS = [
+  [1, 8],
+  [2, 16],
+  [4, 32],
+  [64, 128],
+]
+
+export type PixelCell = { g: string; fg: string }
+
+export function tankPixelCells(widthCells: number, percent: number, phase: number, bucket: string): PixelCell[] {
+  const data = tankColumns(widthCells * 2, percent, phase)
+  const tick = Math.floor(phase)
+  const out: PixelCell[] = []
+  for (let c = 0; c < widthCells; c++) {
+    const jL = c * 2
+    const dL = data[jL]
+    const dR = data[jL + 1]
+    if (dL.spent && dR.spent) {
+      out.push({ g: "\u28c0", fg: slotColor(bucket) })
+      continue
+    }
+    let mask = 0
+    const paint = (d: ColumnData, col: 0 | 1) => {
+      if (d.spent) return
+      const wd = clamp(d.h, 0, 1) * 4
+      const base = Math.floor(wd)
+      const frac = wd - base
+      for (let r = 0; r < 4; r++) {
+        const fromBottom = 4 - r
+        let on = fromBottom <= base
+        if (!on && fromBottom === base + 1) {
+          on = hash((jL + col) * 12.9898 + tick * 0.3719) < frac
+        }
+        if (on) mask |= BRAILLE_BITS[r][col]
+      }
+      if (d.spray > 0.35) mask |= BRAILLE_BITS[0][col]
+    }
+    paint(dL, 0)
+    paint(dR, 1)
+    const fg = dL.spent ? dR.fg : dR.spent ? dL.fg : mix(dL.fg, dR.fg, 0.5)
+    out.push({ g: String.fromCharCode(0x2800 + mask), fg })
+  }
+  return out
+}
+
+// ---- seaside scene (panel canvas) ----
+// The panel becomes a shore: the tide line IS the quota (water reaches
+// percent% of the sea's span), the seiche slosh drives the waves, the shore
+// gets the real swash physics (wet sand extends after boundary impacts), and
+// procedurally drawn dot-matrix palms stand on the dunes. Dots are composed
+// per cell as a 2x4 braille mask over a two-color field (fg detail over bg
+// mass), which is how a terminal renders real sprite art.
+const CLASS_PRIORITY = ["coco", "frond", "trunk", "foam", "sandW", "sandD", "water"] as const
+
+export function tankScene(sceneCols: number, sceneRows: number, percent: number, phase: number): Cell[][] {
+  const dotsX = sceneCols * 2
+  const dotsY = sceneRows * 4
+  const beachDots = Math.max(30, Math.round(dotsX * 0.35))
+  const waterMax = Math.max(8, dotsX - beachDots)
+  const columns = tankColumns(waterMax, percent, phase)
+  const impacts = (columns as unknown as { impacts?: { L: { mag: number; age: number }; R: { mag: number; age: number } } }).impacts
+  const tideX = Math.round((percent / 100) * waterMax)
+  const swash = impacts ? impacts.R.mag * Math.exp(-impacts.R.age / 14) : 0
+  const dotK = new Array<string>(dotsX * dotsY).fill("")
+  const dotC = new Array<string>(dotsX * dotsY).fill("")
+  const dotD = new Array<number>(dotsX * dotsY).fill(-1)
+  const setDot = (x: number, y: number, k: string, c: string, d = -1) => {
+    const xi = Math.round(x)
+    const yi = Math.round(y)
+    if (xi < 0 || xi >= dotsX || yi < 0 || yi >= dotsY) return
+    dotK[yi * dotsX + xi] = k
+    dotC[yi * dotsX + xi] = c
+    if (d >= 0) dotD[yi * dotsX + xi] = d
+  }
+  const duneRowFAt = (x: number): number => {
+    const t = clamp((x - tideX) / Math.max(1, dotsX - 1 - tideX), 0, 1)
+    // gentle shore: low at the waterline, rising only slightly across the
+    // beach; sets deeper here so the beach never crowds the title line
+    const base = dotsY * (0.66 - 0.1 * t)
+    const ripple = Math.sin(x * 0.35) * 1.2 + Math.sin(x * 0.13 + 2.0) * 1.5
+    return clamp(base + ripple, 6, dotsY - 3)
+  }
+  const duneRowAt = (x: number): number => Math.round(duneRowFAt(x))
+  const sandDry = "#d9b878"
+  const sandWet = "#94713f"
+  // 1) sea
+  for (let x = 0; x < tideX; x++) {
+    const c = columns[x]
+    // short-scene composition: the swell range is a fixed share of the scene
+    // height, so at 8 rows the surface can't throw 2-cell stair towers;
+    // the base sits deeper for real sky above the sea
+    const surfF = clamp(dotsY * (0.6 - c.h * 0.2), 3.5, dotsY - 6)
+    const base = Math.floor(surfF)
+    const surfaceCol = mix(c.fg, "#eafff9", 0.22)
+    // dither the waterline: boundary pixel included per column -> stippled slopes
+    const jitter = hash(x * 12.9898 + Math.floor(phase / 6) * 7.7)
+    const includeBase = jitter < 1 - (surfF - base)
+    for (let y = base; y < dotsY; y++) {
+      if (y === base && !includeBase) continue
+      const fromSurf = y - surfF
+      // smooth single gradient: no hard surface cutoff (that used to create
+      // floating bright slabs); deep water goes uniform so bands vanish
+      setDot(x, y, "water", mix(surfaceCol, DEEP, clamp(0.1 + fromSurf * 0.052, 0, 1)), fromSurf)
+    }
+    if (c.spray > 0.32) setDot(x, base - 1, "foam", mix(c.fg, "#ffffff", 0.55))
+    if (c.spray > 0.55) setDot(x, base - 2, "foam", mix(c.fg, "#eafff9", 0.4))
+  }
+  // 2) beach
+  for (let x = tideX; x < dotsX; x++) {
+    const dF = duneRowFAt(x)
+    const base = Math.floor(dF)
+    const jitter = hash(x * 7.31 + 3.3 + Math.floor(phase / 6) * 5.1)
+    const includeBase = jitter < 1 - (dF - base)
+    const wetBase = clamp(1 - (x - tideX) / 20, 0, 1)
+    const wet = clamp(wetBase * (0.55 + 0.75 * swash), 0, 1)
+    for (let y = base; y < dotsY; y++) {
+      if (y === base && !includeBase) continue
+      const depth = (y - dF) / Math.max(1, dotsY - 1 - dF)
+      const sandCol = mix(sandDry, sandWet, clamp(wet * (1 - depth * 0.35), 0, 1))
+      setDot(x, y, wet > 0.5 ? "sandW" : "sandD", mix(sandCol, "#000000", clamp(depth, 0, 1) * 0.28), y - dF)
+    }
+    if (x - tideX < 2 + swash * 12 && swash > 0.25) setDot(x, base, "foam", mix("#eafff9", sandWet, 0.25))
+  }
+  // 3) palms (procedural dot sprites: curved trunk + drooping fronds + coconuts)
+  const drawPalm = (xc: number, scale: number, mirror: number) => {
+    const ground = duneRowAt(xc)
+    const H = Math.round(15 * scale)
+    const lean = mirror * Math.round(3 * scale)
+    for (let s = 0; s <= H; s++) {
+      const t = s / Math.max(1, H)
+      const x = xc + lean * t * t
+      const y = ground - s
+      setDot(x, y, "trunk", "#a8794a")
+      setDot(x + 1, y, "trunk", s % 8 === 3 ? "#8f653c" : "#9c6f42")
+    }
+    const centerX = xc + lean
+    const centerY = ground - H + 2
+    const angles = [-2.95, -2.5, -2.05, -1.6, -1.15, -0.7]
+    for (const a0 of angles) {
+      const dir = a0 < -Math.PI / 2 ? -1 : 1
+      const len = 11.5 * scale
+      for (let t = 0; t <= 1.0001; t += 0.055) {
+        const r = 2.2 + t * (len - 2.2)
+        const a = a0 + dir * t * 1.45
+        const x = centerX + Math.cos(a) * r
+        const y = centerY + Math.sin(a) * r
+        // single-dot arcs: six distinct drooping fronds with gaps between them
+        // (double thickness melted the crown into a cloud)
+        setDot(x, y, "frond", mix("#54b476", "#2e7d4f", t * 0.65))
+      }
+    }
+    setDot(centerX - 2, centerY + 4, "coco", "#7a5230")
+    setDot(centerX + 2, centerY + 5, "coco", "#7a5230")
+  }
+  const beachWidth = dotsX - tideX
+  // Palm size is driven by the scene HEIGHT (a fixed share of it), not by the
+  // beach width — otherwise at high tide the beach shrinks and the palms
+  // collapse into unreadable specks next to a giant water mass.
+  const palmScale = clamp(Math.min(beachWidth / 44, dotsY / 40), 0.6, 1.0)
+  if (beachWidth < 44) {
+    // narrow beach (high tide): one properly-sized palm reads better than two
+    // overlapping miniatures
+    drawPalm(tideX + beachWidth * 0.55, palmScale, 1)
+  } else {
+    drawPalm(tideX + Math.max(5, beachWidth * 0.3), palmScale, 1)
+    drawPalm(tideX + Math.min(beachWidth * 0.75, beachWidth - 10), palmScale * 0.8, -1)
+  }
+  // 4) quantize dots into cells. Four rendering languages, chosen per cell:
+  //    - sprite dots (fronds/trunk/coconuts) always render as braille masks,
+  //      never as solid blocks (leaves are stippled, not Minecraft squares);
+  //    - fringe cells (the surface line passes through them) render as dot art
+  //      over a dark tint: invisible tile edges, the dots carry the line;
+  //    - fully covered interior field cells render as half-block two-tone (▀):
+  //      two coloured 12px bands, finer than cell-sized flat blocks;
+  //    - other interior cells render as a braille mask over an averaged field.
+  const out: Cell[][] = []
+  const SPRITE = new Set(["frond", "trunk", "coco"])
+  const prio = (k: string) => CLASS_PRIORITY.indexOf(k as (typeof CLASS_PRIORITY)[number])
+  const avgColor = (ds: { c: string }[]): string => {
+    if (ds.length === 0) return "#000000"
+    let r = 0
+    let g = 0
+    let b = 0
+    for (const d of ds) {
+      const [rr, gg, bb] = toInts(d.c)
+      r += rr
+      g += gg
+      b += bb
+    }
+    return toHex([r / ds.length, g / ds.length, b / ds.length])
+  }
+  for (let cr = 0; cr < sceneRows; cr++) {
+    const row: Cell[] = []
+    for (let cc = 0; cc < sceneCols; cc++) {
+      const dots: { k: string; c: string; x: number; y: number; d: number }[] = []
+      for (let dy = 0; dy < 4; dy++) {
+        for (let dx = 0; dx < 2; dx++) {
+          const idx = (cr * 4 + dy) * dotsX + (cc * 2 + dx)
+          const k = dotK[idx]
+          if (k) dots.push({ k, c: dotC[idx], x: dx, y: dy, d: dotD[idx] })
+        }
+      }
+      if (dots.length === 0) {
+        row.push({ g: " " })
+        continue
+      }
+      const glyphOf = (msk: number) => String.fromCharCode(0x2800 + msk)
+      const sprite = dots.filter((d) => SPRITE.has(d.k))
+      if (sprite.length > 0) {
+        // leaves / trunk / coconuts: pure dot art over whatever is behind
+        let msk = 0
+        for (const d of sprite) msk |= BRAILLE_BITS[d.y][d.x]
+        const rest = dots.filter((d) => !SPRITE.has(d.k))
+        if (rest.length >= 4) row.push({ g: glyphOf(msk), fg: avgColor(sprite), bg: avgColor(rest) })
+        else row.push({ g: glyphOf(msk), fg: avgColor(sprite) })
+        continue
+      }
+      // fringe cells: the waterline / dune line passes through them (any dot
+      // sits < 2 dots below its local surface). They render as dot art over a
+      // tile whose color is taken from the cell's DEEPEST dot, so the tile
+      // visually continues the water/sand body from below. (A flat dark tint
+      // read as crenellated towers standing on the bright surface water.)
+      const fringe = dots.some((d) => d.d >= 0 && d.d < 2)
+      if (fringe) {
+        let msk = 0
+        for (const d of dots) msk |= BRAILLE_BITS[d.y][d.x]
+        if (dots.length < 4) {
+          // sparse cell: dots only — a tile here would be a lone square
+          // floating at dune steps / wave crests
+          row.push({ g: glyphOf(msk), fg: avgColor(dots) })
+          continue
+        }
+        let deepD = -1
+        let deepC = "#000000"
+        for (const d of dots) {
+          if (d.d >= 0 && d.d > deepD) {
+            deepD = d.d
+            deepC = d.c
+          }
+        }
+        row.push({ g: glyphOf(msk), fg: avgColor(dots), bg: deepC })
+        continue
+      }
+      let fgK = dots[0].k
+      for (const d of dots) if (prio(d.k) >= 0 && (prio(fgK) < 0 || prio(d.k) < prio(fgK))) fgK = d.k
+      const fgDots = dots.filter((d) => d.k === fgK)
+      const others = dots.filter((d) => d.k !== fgK)
+      let mask = 0
+      for (const d of fgDots) mask |= BRAILLE_BITS[d.y][d.x]
+      const glyph = glyphOf(mask)
+      if (others.length === 0) {
+        if (dots.length === 8) {
+          const top = avgColor(dots.filter((d) => d.y < 2))
+          const bottom = avgColor(dots.filter((d) => d.y >= 2))
+          row.push({ g: "\u2580", fg: top, bg: bottom })
+        } else {
+          // partial cover: dots only (a background would paint the whole cell)
+          row.push({ g: glyph, fg: avgColor(dots) })
+        }
+        continue
+      }
+      if (others.length >= 5) {
+        row.push({ g: glyph, fg: avgColor(fgDots), bg: avgColor(others) })
+      } else {
+        row.push({ g: glyph, fg: avgColor(fgDots) })
+      }
+    }
+    out.push(row)
+  }
+  return out
+}
+
+// Lane B: the quota bar's own footprint (ONE row) as a micro shoreline. Same
+// engine, same tide semantics (water extent = the window's pct), quantized for
+// a 4-dot-tall strip: sunlit surface dither, depth gradient, wet-sand tideline.
+export function tankStrip(cols: number, percent: number, phase: number): Cell[] {
+  const dotsX = cols * 2
+  const dotsY = 4
+  const beachDots = Math.max(10, Math.round(dotsX * 0.3))
+  const waterMax = Math.max(4, dotsX - beachDots)
+  const columns = tankColumns(waterMax, percent, phase)
+  const impacts = (columns as unknown as { impacts?: { L: { mag: number; age: number }; R: { mag: number; age: number } } }).impacts
+  const tideX = Math.round((percent / 100) * waterMax)
+  const swash = impacts ? impacts.R.mag * Math.exp(-impacts.R.age / 14) : 0
+  const dotK = new Array<string>(dotsX * dotsY).fill("")
+  const dotC = new Array<string>(dotsX * dotsY).fill("")
+  const dotD = new Array<number>(dotsX * dotsY).fill(-1)
+  const dotB = new Array<number>(dotsX * dotsY).fill(0)
+  const setDot = (x: number, y: number, k: string, c: string, d = -1, b = 0) => {
+    const xi = Math.round(x)
+    const yi = Math.round(y)
+    if (xi < 0 || xi >= dotsX || yi < 0 || yi >= dotsY) return
+    dotK[yi * dotsX + xi] = k
+    dotC[yi * dotsX + xi] = c
+    dotB[yi * dotsX + xi] = b
+    if (d >= 0) dotD[yi * dotsX + xi] = d
+  }
+  // flat body colours: per-column engine tints are what made the strip a
+  // patchwork quilt — the water is one colour, the sand is (wet/dry) tan,
+  // and only the crest line, foam and sunlit edge carry detail
+  let BODY_W = "#2e7f8e"
+  {
+    let r = 0
+    let g = 0
+    let b = 0
+    let n = 0
+    for (let x = 0; x < tideX; x++) {
+      const c = columns[x]
+      if (c.spent) continue
+      const [rr, gg, bb] = toInts(c.baseFg)
+      r += rr
+      g += gg
+      b += bb
+      n++
+    }
+    if (n > 0) BODY_W = toHex([r / n, g / n, b / n])
+  }
+  // sea: the swell uses the full strip height so the slosh stays visible at
+  // one row tall (~2.2 dots of surface travel + dither shimmer + spray pop).
+  // The surface is slope-limited (<=1 dot per column step): raw seiche
+  // notches would otherwise leave trough columns nearly empty next to full
+  // crest columns — a zebra of blocks and black gaps.
+  const rawF: number[] = []
+  for (let x = 0; x < tideX; x++) rawF.push(clamp(dotsY * (0.72 - columns[x].h * 0.55), 0.6, dotsY - 0.6))
+  const effF: number[] = []
+  for (let x = 0; x < tideX; x++) {
+    effF.push(x === 0 ? rawF[0] : clamp(rawF[x], effF[x - 1] - 1.0, effF[x - 1] + 1.0))
+  }
+  for (let x = 0; x < tideX; x++) {
+    const c = columns[x]
+    const surfF = effF[x]
+    const base = Math.floor(surfF)
+    const surfaceCol = mix(c.fg, "#eafff9", 0.22)
+    const jitter = hash(x * 12.9898 + Math.floor(phase / 6) * 7.7)
+    const includeBase = jitter < 1 - (surfF - base)
+    // the bottom two dot-rows are always water: trough columns keep a body
+    // instead of collapsing to two lonely dots next to full crest columns.
+    // Forced fill above the dither row is flat body colour (never bright);
+    // only the surface row itself carries the bright crest detail.
+    for (let y = Math.min(base, 2); y < dotsY; y++) {
+      if (y === base && !includeBase) continue
+      const d = y - surfF
+      const forced = y < base
+      setDot(x, y, "water", forced ? BODY_W : mix(surfaceCol, DEEP, clamp(0.15 + d * 0.3, 0, 1)), d, forced ? 1 : 0)
+    }
+    if (c.spray > 0.32) setDot(x, base - 1, "foam", mix(c.fg, "#ffffff", 0.55))
+    if (c.spray > 0.55) setDot(x, base - 2, "foam", mix(c.fg, "#eafff9", 0.4))
+  }
+  // beach: low dune with a wet band at the tideline. No boundary dither here:
+  // at 4 dots tall a skipped base pixel detaches whole tiles (lumpy floating
+  // blocks); the sea keeps its dither, the sand keeps a clean edge.
+  for (let x = tideX; x < dotsX; x++) {
+    const t = clamp((x - tideX) / Math.max(1, dotsX - 1 - tideX), 0, 1)
+    const dF = 1.4 + t * 1.2 + Math.sin(x * 0.3) * 0.15
+    const base = Math.floor(dF)
+    const wet = clamp((1 - (x - tideX) / 10) * (0.5 + 0.5 * swash), 0, 1)
+    for (let y = base; y < dotsY; y++) {
+      const sandCol = mix("#d9b878", "#94713f", wet)
+      const d = y - dF
+      const top = d < 1
+      // sunlit top edge carries the detail; the rest is flat body fill
+      setDot(x, y, wet > 0.45 ? "sandW" : "sandD", top ? mix(sandCol, "#ffffff", 0.3) : mix(sandCol, "#000000", 0.12), d, top ? 0 : 1)
+    }
+    if (x - tideX < 2 + swash * 8 && swash > 0.25) setDot(x, base, "foam", mix("#eafff9", "#94713f", 0.25))
+  }
+  // quantize: one row of cells. Detail dots (crest line, foam, sunlit sand
+  // edge) draw as a braille mask over a FLAT body tile; body dots are never
+  // drawn individually. Flat tiles kill the patchwork quilt.
+  const out: Cell[] = []
+  const avgColor = (ds: { c: string }[]): string => {
+    if (ds.length === 0) return "#000000"
+    let r = 0
+    let g = 0
+    let b = 0
+    for (const d of ds) {
+      const [rr, gg, bb] = toInts(d.c)
+      r += rr
+      g += gg
+      b += bb
+    }
+    return toHex([r / ds.length, g / ds.length, b / ds.length])
+  }
+  const glyphOf = (msk: number) => String.fromCharCode(0x2800 + msk)
+  for (let cc = 0; cc < cols; cc++) {
+    const dots: { k: string; c: string; x: number; y: number; d: number; b: number }[] = []
+    for (let dy = 0; dy < 4; dy++) {
+      for (let dx = 0; dx < 2; dx++) {
+        const idx = dy * dotsX + (cc * 2 + dx)
+        const k = dotK[idx]
+        if (k) dots.push({ k, c: dotC[idx], x: dx, y: dy, d: dotD[idx], b: dotB[idx] })
+      }
+    }
+    if (dots.length === 0) {
+      out.push({ g: " " })
+      continue
+    }
+    const detail = dots.filter((d) => !d.b && (d.k === "foam" || (d.d >= 0 && d.d < 1)))
+    const body = dots.filter((d) => detail.indexOf(d) < 0)
+    let bg: string | undefined
+    if (body.length > 0) {
+      const waterN = body.filter((d) => d.k === "water").length
+      const sandN = body.filter((d) => d.k === "sandW" || d.k === "sandD").length
+      if (waterN >= sandN) bg = BODY_W
+      else {
+        const wetN = body.filter((d) => d.k === "sandW").length
+        const dryN = body.filter((d) => d.k === "sandD").length
+        bg = wetN >= dryN ? "#94713f" : "#d9b878"
+      }
+    }
+    if (detail.length === 0) {
+      out.push({ g: " ", bg: bg ?? "#000000" })
+      continue
+    }
+    let msk = 0
+    for (const d of detail) msk |= BRAILLE_BITS[d.y][d.x]
+    if (bg === undefined) out.push({ g: glyphOf(msk), fg: avgColor(detail) })
+    else out.push({ g: glyphOf(msk), fg: avgColor(detail), bg })
+  }
+  return out
+}

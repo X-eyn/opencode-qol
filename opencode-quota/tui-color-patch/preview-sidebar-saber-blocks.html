@@ -1,0 +1,300 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Sidebar quota section — panel-faithful saber blocks</title>
+<style>
+  :root { --bg:#141210; --card:#1d1a16; --edge:#3a332c; --text:#cfc6bb; --muted:#8a7f74; --dim:#5c554d; --accent:#e8863c; }
+  * { box-sizing: border-box; }
+  body { margin:0; padding:26px 22px 60px; background:var(--bg); color:var(--text);
+         font-family: Consolas, "Cascadia Mono", "JetBrains Mono", "Courier New", monospace; }
+  h1 { font-size:19px; margin:0 0 6px; }
+  .intro { color:var(--muted); font-size:13px; line-height:1.7; max-width:980px; }
+  .intro b { color:var(--accent); }
+  .toolbar { margin:16px 0 18px; color:var(--muted); font-size:12.5px; }
+  .toolbar input { accent-color: var(--accent); }
+  .section { background:#191510; border:1px solid var(--edge); border-radius:10px;
+             padding:12px 14px; margin:0 0 18px; max-width:740px; }
+  .section h2 { font-size:13px; margin:0 0 10px; color:var(--accent); }
+  .quota { font-size:15px; line-height:1.15; white-space:pre; }
+  .quota .hdr { color:#eae2d6; font-weight:bold; }
+  .quota .name { color:#8a7f74; }
+  .quota .time { color:#e8863c; }
+  .quota .cellgrid span { outline:1px solid rgba(255,255,255,0.16); }
+  .foot { color:#6f665c; font-size:12px; max-width:980px; line-height:1.75; }
+</style>
+</head>
+<body>
+
+<h1>Sidebar quota section — panel-faithful saber blocks</h1>
+<p class="intro">
+  Same pixel code as the panel preview (<span class="dim">preview-saber-panel.html</span>), same <b>2.25×</b> speed,
+  rendered the way the sidebar would draw it: each window becomes a <b>pixel block</b> (quadrant glyphs, 2×2 px
+  per cell) instead of a 1-row bar. Blade length = your live quota. The panel's empty canvas margin is trimmed
+  so the block stays compact — the saber itself is at panel scale.<br><br>
+  Two sizes are shown — <b>8 text rows</b> per window and <b>6 text rows</b> per window. The panel's saber is
+  ~13 px thick on a 40 px canvas; these keep that same proportion at sidebar scale.
+</p>
+
+<div class="toolbar">
+  <label><input id="grid" type="checkbox"> show pixel cells</label>
+</div>
+
+<div id="sections"></div>
+
+<p class="foot">
+  If this is the direction: I implement it in the sidebar (static cells built once per data refresh, only the
+  blade animates per tick — performance is fine), with the usual test suite. Pick a size — or say taller
+  (the block size is a constant; 8, 10, 12 rows are all on the table). One tradeoff to know: this makes the
+  Quota section about 25–30 rows tall, since each window becomes a block instead of a line.
+</p>
+
+<script>
+"use strict";
+
+/* ===== same math as preview-saber-panel.html, scaled to sidebar width ===== */
+
+const PANEL_W = 152, PANEL_H = 40;
+const BLUE = "#7aa5f8", ORANGE = "#f08a3c";
+const BG = "#0e0c0a";
+
+function hexToRgb(hex) {
+  const m = hex.trim().match(/^#?([0-9a-f]{3}|[0-9a-f]{6})$/i);
+  if (!m) return null;
+  let h = m[1];
+  if (h.length === 3) h = h[0]+h[0]+h[1]+h[1]+h[2]+h[2];
+  return [parseInt(h.slice(0,2),16), parseInt(h.slice(2,4),16), parseInt(h.slice(4,6),16)];
+}
+function mix(a, b, t2) {
+  const x = hexToRgb(a), y = hexToRgb(b);
+  if (!x || !y) return a;
+  const c = x.map((v,i) => Math.max(0, Math.min(255, Math.round(v + (y[i]-v)*t2))));
+  return "#" + c.map(v => v.toString(16).padStart(2,"0")).join("");
+}
+function scaleColor(hex, f) {
+  const x = hexToRgb(hex);
+  const c = x.map(v => Math.max(0, Math.min(255, Math.round(v * f))));
+  return "#" + c.map(v => v.toString(16).padStart(2,"0")).join("");
+}
+function quant8(hex) {
+  const x = hexToRgb(hex);
+  const c = x.map(v => Math.max(0, Math.min(255, Math.round(v / 8) * 8)));
+  return "#" + c.map(v => v.toString(16).padStart(2,"0")).join("");
+}
+function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
+
+/* ----- single pixel of the saber, scaled (S = width scale vs the panel) ----- */
+
+function pixel(saber, x, y, t, quota) {
+  const SW = saber.SW, SH = saber.SH;
+  const S = SW / 152;            // horizontal scale (panel is 152 wide)
+  const SY = SH / PANEL_H;       // vertical scale (panel is 40 tall)
+  const cy = (SH - 1) / 2;       // half-integer center -> symmetric even thickness
+  const bladePx = SH / 2;        // blade thickness: half the block height
+  const maxDist0 = (bladePx - 1) / 2 + 0.01;
+  const hiltHalf = (bladePx - 3) / 2;
+  const emitHalf = (bladePx - 1) / 2;
+  const low = quota < 0.3;
+  const bladeCol = low ? "#ff6a5a" : saber.bucket;
+  const bladeStart = Math.round(34 * S);
+  const bladeEnd = bladeStart + Math.round(112 * S) * Math.max(0, Math.min(1, quota));
+
+  // void background with vignette
+  const vx = (x / (SW - 1)) * 2 - 1, vy = (y / (SH - 1)) * 2 - 1;
+  const vig = 1 - 0.20 * Math.sqrt(vx * vx + vy * vy) / 1.414;
+  let c = scaleColor("#0f0d0b", vig);
+
+  // floor light spill under the blade
+  const spillY = cy + maxDist0 + 0.5;
+  if (x >= bladeStart && x <= bladeEnd + Math.round(6 * S) && y > spillY) {
+    const d = y - spillY;
+    c = mix(c, bladeCol, clamp(0.14 * Math.exp(-d / Math.max(0.6, 2.8 * (bladePx / 13))), 0, 0.22));
+  }
+
+  /* ---- hilt ---- */
+  const hx0 = Math.round(8 * S);
+  if (x >= hx0 && x <= Math.round(30 * S) - 1 && Math.abs(y - cy) <= hiltHalf) {
+    const ry = (y - (cy - hiltHalf)) / (2 * hiltHalf);
+    let g = mix("#9a9a9a", "#2e2e2e", ry);
+    if (Math.round(x / S) % 3 === 0) g = mix(g, "#161616", 0.5);   // grip ridges (panel spacing)
+    if (x === hx0) g = mix(g, "#0c0c0c", 0.55);                    // pommel
+    if (y === cy - hiltHalf || y === cy + hiltHalf) g = mix(g, "#d8d8d8", 0.55);
+    const bx0 = Math.round(12 * S), bx1 = Math.round(14.9 * S);
+    const by0 = cy - hiltHalf + 1, by1 = by0 + 1;
+    if (x >= bx0 && x <= bx1 && y >= by0 && y <= by1) {
+      const pulse = 0.75 + 0.25 * Math.sin(t * 0.25);
+      g = mix("#4dff88", "#ffffff", 0.25 * pulse);                 // power button
+    }
+    return g;
+  }
+  /* ---- emitter shroud ---- */
+  const ex0 = Math.round(30 * S), ex1 = Math.round(33.9 * S);
+  if (x >= ex0 && x <= ex1 && Math.abs(y - cy) <= emitHalf) {
+    const ry = (y - (cy - emitHalf)) / (2 * emitHalf);
+    let g = mix("#7c7c7c", "#242424", ry);
+    if (x === ex0 || x === ex1) g = mix(g, "#d0d0d0", 0.45);
+    return g;
+  }
+
+  /* ---- emitter halo ---- */
+  {
+    const dxE = x - Math.round(33 * S), dyE = y - cy;
+    const dE = Math.sqrt(dxE * dxE + dyE * dyE);
+    const haloR = Math.max(2.5, 14 * S);
+    if (dE < haloR) c = mix(c, bladeCol, clamp(0.30 * Math.exp(-dE / Math.max(0.8, 4.2 * S)), 0, 0.35));
+  }
+
+  /* ---- blade ---- */
+  if (x >= bladeStart - 1 && x <= bladeEnd) {
+    const dist = Math.abs(y - cy);
+    const taperR = Math.max(2, Math.round(10 * S));
+    const tipP = clamp((x - (bladeEnd - taperR)) / taperR, 0, 1);
+    const maxDist = maxDist0 * (1 - Math.pow(tipP, 2.4)) + 0.05;
+    if (dist <= maxDist) {
+      const d = dist / Math.max(0.6, maxDist);
+      const plasma =
+        1 +
+        0.05 * Math.sin(x * (0.22 / S) - t * 0.6) +
+        0.035 * Math.sin(x * (0.09 / S) + t * 0.37) +
+        0.02 * Math.sin(x * (0.6 / S) + t * 1.1);
+      let col;
+      if (d < 0.26) col = "#ffffff";
+      else if (d < 0.42) col = mix(bladeCol, "#ffffff", 0.88);
+      else if (d < 0.60) col = mix(bladeCol, "#ffffff", 0.5);
+      else if (d < 0.78) col = bladeCol;
+      else if (d < 0.92) col = mix(bladeCol, BG, 0.35);
+      else col = mix(bladeCol, BG, 0.68);
+      col = scaleColor(col, clamp(plasma, 0.9, 1.14));
+      col = mix(col, "#ffffff", clamp(0.6 * Math.pow(tipP, 2.6), 0, 0.65)); // tip bloom
+      return col;
+    }
+  }
+  return c;
+}
+
+/* ----- quadrant glyph renderer: 2x2 pixels per cell, 2 colors + fg/bg ----- */
+
+function isVoid(hex) {
+  const v = hexToRgb(hex);
+  return Boolean(v) && (v[0] + v[1] + v[2]) / 3 < 20;
+}
+
+const QUAD = { 0:" ", 1:"▘", 2:"▝", 3:"▀", 4:"▖", 5:"▌", 6:"▞", 7:"▛", 8:"▗", 9:"▚", 10:"▐", 11:"▜", 12:"▄", 13:"▙", 14:"▟", 15:"█" };
+const BITS = [1, 2, 4, 8]; // TL, TR, BL, BR
+
+function cellGlyph(colors) {
+  const q = colors.map(quant8);
+  const counts = new Map();
+  for (const c of q) counts.set(c, (counts.get(c) || 0) + 1);
+  const sorted = [...counts.keys()].sort((a, b) => counts.get(b) - counts.get(a));
+  if (sorted.length === 1) return { g: "█", fg: sorted[0], bg: null };
+  const cA = sorted[0], cB = sorted[1];
+  const rgba = (h) => { const v = hexToRgb(h); return v; };
+  const snap = q.map((c) => {
+    const ca = rgba(cA), cb = rgba(cB), cc = rgba(c);
+    const da = ca.reduce((s, v, i) => s + Math.abs(v - cc[i]), 0);
+    const db = cb.reduce((s, v, i) => s + Math.abs(v - cc[i]), 0);
+    return da <= db ? cA : cB;
+  });
+  let maskA = 0;
+  snap.forEach((c, i) => { if (c === cA) maskA |= BITS[i]; });
+  const popA = (maskA & 1) + ((maskA >> 1) & 1) + ((maskA >> 2) & 1) + ((maskA >> 3) & 1);
+  // draw the color with fewer pixels as fg
+  const useA = popA <= 2;
+  const mask = useA ? maskA : 15 ^ maskA;
+  const fg = useA ? cA : cB;
+  const bg = useA ? cB : cA;
+  if (mask === 15) return { g: "█", fg, bg: null };
+  if (mask === 0) return { g: " ", fg, bg: null };
+  return { g: QUAD[mask], fg, bg };
+}
+
+/* ----- render one saber block as HTML (rows of cells) ----- */
+
+const LABEL_WIDTH = 9;
+
+function renderSaberBlock(saber, quota, t) {
+  const C = saber.SW / 2;         // cells wide
+  const R = saber.SH / 2;         // cell rows tall
+  const label = `${Math.round(quota * 100)}% left`.padStart(LABEL_WIDTH);
+  const pctStr = `${Math.round(quota * 100)}%`;
+  const idx = label.indexOf(pctStr);
+  const labelHtml =
+    (idx > 0 ? `<span style="color:#8a7f74">${label.slice(0, idx)}</span>` : "") +
+    `<span style="color:${saber.bucket}">${pctStr}</span>` +
+    `<span style="color:#8a7f74">${label.slice(idx + pctStr.length)}</span>`;
+  const rows = [];
+  for (let r = 0; r < R; r++) {
+    let html = "";
+    for (let cx = 0; cx < C; cx++) {
+      const x0 = cx * 2;
+      // sample once per row per cell: clean vertical structure, no intra-cell noise
+      const topColor = pixel(saber, x0, r * 2, t, quota);
+      const botColor = pixel(saber, x0, r * 2 + 1, t, quota);
+      if (isVoid(topColor) && isVoid(botColor)) { html += " "; continue; }
+      const cell = cellGlyph([topColor, topColor, botColor, botColor]);
+      html += `<span style="color:${cell.fg}${cell.bg ? `;background:${cell.bg}` : ""}">${cell.g}</span>`;
+    }
+    if (r === Math.floor((R - 1) / 2)) html += "  " + labelHtml;
+    rows.push(html);
+  }
+  return rows;
+}
+
+/* ----- page ----- */
+
+const WINDOWS = [
+  { name: "5h", time: "4h 11m", quota: 0.95, bucket: BLUE },
+  { name: "Weekly", time: "1d 15h 3m", quota: 0.37, bucket: ORANGE },
+  { name: "Monthly", time: "24d 8h 9m", quota: 0.68, bucket: ORANGE },
+];
+
+const SECTIONS = [
+  { title: "8 text rows per window — chunky (blade = 4 cell rows)", cellRows: 8, widthCells: 25 },
+  { title: "6 text rows per window — compact (blade = 3 cell rows)", cellRows: 6, widthCells: 25 },
+];
+
+const sectionsEl = document.getElementById("sections");
+const sectionRefs = [];
+
+for (const spec of SECTIONS) {
+  const div = document.createElement("div");
+  div.className = "section";
+  div.innerHTML = `<h2>${spec.title}</h2><div class="quota"></div>`;
+  sectionsEl.appendChild(div);
+  const quotaEl = div.querySelector(".quota");
+  sectionRefs.push({ el: quotaEl, spec });
+}
+
+function nameLine(win) {
+  const left = win.name;
+  const right = win.time;
+  const pad = Math.max(1, 36 - left.length - right.length);
+  return `<span class="name">${left}</span>${" ".repeat(pad)}<span class="time">${right}</span>\n`;
+}
+
+let t = 0;
+function frame() {
+  t += 2.25; // approved speed
+  for (const ref of sectionRefs) {
+    const { spec, el } = ref;
+    const saber = { SW: spec.widthCells * 2, SH: spec.cellRows * 2, bucket: BLUE };
+    let out = `<span class="hdr">[OpenCode Go]</span>\n`;
+    for (const win of WINDOWS) {
+      saber.bucket = win.bucket;
+      out += nameLine(win);
+      out += renderSaberBlock(saber, win.quota, t).join("\n") + "\n\n";
+    }
+    el.innerHTML = out;
+  }
+}
+
+document.getElementById("grid").addEventListener("change", (e) => {
+  document.querySelectorAll(".quota").forEach((q) => q.classList.toggle("cellgrid", e.target.checked));
+});
+
+setInterval(frame, 120);
+frame();
+</script>
+</body>
+</html>

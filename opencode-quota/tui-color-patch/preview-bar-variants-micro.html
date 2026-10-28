@@ -1,0 +1,353 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Quota Bar Animations — Micro Set</title>
+<style>
+  :root {
+    --bg: #141210;
+    --panel: #1d1a16;
+    --panel-edge: #3a332c;
+    --text: #cfc6bb;
+    --muted: #8a7f74;
+    --dim: #5c554d;
+    --accent: #e8863c;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 28px 22px 60px;
+    background: var(--bg); color: var(--text);
+    font-family: "Cascadia Mono", "JetBrains Mono", Consolas, "Courier New", monospace;
+  }
+  h1 { font-size: 19px; margin: 0 0 6px; color: #efe7dc; }
+  .sub { color: var(--muted); font-size: 13px; margin-bottom: 6px; line-height: 1.65; max-width: 780px; }
+  .sub b { color: var(--accent); font-weight: 600; }
+  .toolbar { margin: 18px 0 22px; }
+  button {
+    font: inherit; font-size: 13px;
+    background: #2a241e; color: var(--text);
+    border: 1px solid var(--panel-edge); border-radius: 6px;
+    padding: 7px 14px; cursor: pointer;
+  }
+  button:hover { border-color: var(--accent); color: #fff; }
+  .card {
+    background: var(--panel); border: 1px solid var(--panel-edge);
+    border-radius: 10px; padding: 16px 18px 13px; margin-bottom: 16px;
+    max-width: 780px;
+  }
+  .card h2 { font-size: 15px; margin: 0 0 2px; color: #efe7dc; }
+  .card h2 .num { color: var(--accent); margin-right: 8px; }
+  .vibe { color: var(--muted); font-size: 12.5px; margin-bottom: 12px; line-height: 1.55; }
+  .barbox {
+    font-size: 16px; line-height: 1.15; letter-spacing: 0;
+    white-space: pre; user-select: none;
+  }
+  .barbox .lbl-l { color: var(--dim); }
+  .note { color: #6f665c; font-size: 12px; margin-top: 10px; line-height: 1.55; }
+  .note b { color: #a99d8f; font-weight: 600; }
+  .foot { color: var(--dim); font-size: 12px; max-width: 780px; line-height: 1.7; }
+</style>
+</head>
+<body>
+
+<h1>Quota Bar Animations — Micro Set</h1>
+<div class="sub">
+  Designed at the <b>quantization limit</b>: every effect moves the fill by only <b>1–3 of the 32 visible
+  8-bit steps</b>, with fine spatial detail and smooth, slow timing. Nothing big moves — the bar feels like
+  a precision instrument, machined metal, or lit glass.<br>
+  Real fidelity as always: <b>120 ms clock</b> (true TUI speed) · <b>21-cell bars</b> · glyphs <b>█ ▓ ▒ ░</b>
+  · the exact color math the TUI will run. The <b>hot frontier</b>, <b>ghost trail</b>, <b>burn flash</b> and
+  <b>sub-30% alarm</b> are shared by all, as installed.<br>
+  <b>Watch each one for 15–20 seconds</b> — these are meant to be noticed on the second look, not the first.
+</div>
+
+<div class="toolbar">
+  <button id="drop">▼ Simulate quota drop</button>
+</div>
+
+<div id="rows"></div>
+
+<div class="foot">
+  Compare with the first set (preview-bar-variants.html) — these are the same five ideas taken down two
+  orders of magnitude in scale: no sweeps, no comets, no particles that travel. Only grain, breath,
+  interference and rare single-cell glints.<br><br>
+  Tell me which number(s) feel right — or “#2 but slightly stronger” — and I’ll port it into the plugin
+  with the usual tests and one-restart install.
+</div>
+
+<script>
+"use strict";
+
+/* ---------- shared utilities (identical to the TUI patch math) ---------- */
+
+const CELLS = 21;
+const TICK_MS = 120;
+const BG = "#1d1a16";
+const MUTED = "#5c554d";
+
+function hexToRgb(hex) {
+  const m = hex.trim().match(/^#?([0-9a-f]{3}|[0-9a-f]{6})$/i);
+  if (!m) return null;
+  let h = m[1];
+  if (h.length === 3) h = h[0]+h[0]+h[1]+h[1]+h[2]+h[2];
+  return [parseInt(h.slice(0,2),16), parseInt(h.slice(2,4),16), parseInt(h.slice(4,6),16)];
+}
+function mix(a, b, t) {
+  const x = hexToRgb(a), y = hexToRgb(b);
+  if (!x || !y) return a;
+  const c = x.map((v,i) => Math.max(0, Math.min(255, Math.round(v + (y[i]-v)*t))));
+  return "#" + c.map(v => v.toString(16).padStart(2,"0")).join("");
+}
+function quant(hex, s = 8) {
+  const x = hexToRgb(hex);
+  if (!x) return hex;
+  const c = x.map(v => Math.max(0, Math.min(255, Math.round(v/s)*s)));
+  return "#" + c.map(v => v.toString(16).padStart(2,"0")).join("");
+}
+function rnd(a, b) { return a + Math.random() * (b - a); }
+function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
+function frac(v) { return v - Math.floor(v); }
+function hash01(n) { return frac(Math.sin(n * 127.1 + 311.7) * 43758.5453); }
+
+// shared frontier glow on the leading one or two cells (as installed)
+function frontierGlow(filled, x, tick, seed) {
+  const d = filled - 1 - x;
+  if (d < 0 || d > 1) return 0;
+  const strength = d === 0 ? 1 : 0.45;
+  const flicker =
+    0.5 +
+    0.3 * Math.sin(tick * 0.75 + seed) * Math.sin(tick * 1.9 + x * 0.6) +
+    0.2 * Math.sin(tick * 0.31 + x * 0.5 + seed);
+  return strength * (0.08 + 0.10 * clamp(flicker, 0, 1));
+}
+
+// a barely-there static ramp across the fill (machined shading), 0 -> 0.045
+function machinedRamp(x, filled) {
+  return filled <= 1 ? 0 : (x / (filled - 1)) * 0.045;
+}
+
+/* ---------- bars ---------- */
+
+const BLUE = "#7aa5f8", ORANGE = "#f08a3c";
+
+const bars = [
+  { n: 1, name: "Machined Grain",   pct: 96, base: BLUE,   variant: "grain",
+    vibe: "Living brushed metal. A fine, slowly-evolving texture of ±1–2 color steps, with rare single-cell glints where light catches. The flagship micro texture." },
+  { n: 2, name: "Precision Edge",   pct: 66, base: ORANGE, variant: "edge",
+    vibe: "The most minimal of all: the fill is virtually still, and only the leading edge breathes — slowly, silky-smooth, like the meniscus on an instrument gauge." },
+  { n: 3, name: "Moiré Field",      pct: 84, base: BLUE,   variant: "moire",
+    vibe: "Three ultra-fine light waves interfere; slow moving bands of ±1 step drift through the fill like patterned glass. Hypnotic on the second look." },
+  { n: 4, name: "Filament Lattice", pct: 51, base: ORANGE, variant: "filament",
+    vibe: "Hair-thin filaments at fixed positions, each sighing gently out of phase with its neighbors. The geometry never moves; only the breathing light does." },
+  { n: 5, name: "Phosphor Bloom",   pct: 88, base: BLUE,   variant: "bloom",
+    vibe: "Rare, soft 2-cell blooms well up every few seconds and dissolve — like phosphor on a quality CRT. Never more than two at once; no travel, no sparkle." },
+];
+
+for (const bar of bars) {
+  bar.filled = Math.round((bar.pct / 100) * CELLS);
+  bar.ghost = bar.filled;
+  bar.flash = null;
+  bar.seed = Math.random() * 6.28;
+  bar.state = variantState(bar.variant, bar);
+}
+
+/* ---------- variant engines ---------- */
+
+function variantState(kind, bar) {
+  if (kind === "grain") return { glints: [], nextGlint: Math.round(rnd(10, 30)) };
+  if (kind === "bloom") return { blooms: [], nextBloom: Math.round(rnd(14, 36)) };
+  return {};
+}
+
+function variantStep(bar, tick) {
+  const s = bar.state, kind = bar.variant;
+
+  if (kind === "grain") {
+    if (tick >= s.nextGlint && bar.filled > 2) {
+      s.glints.push({ x: Math.floor(rnd(1, Math.max(2, bar.filled - 1))), start: tick, life: Math.round(rnd(3, 6)), peak: rnd(0.12, 0.18) });
+      s.nextGlint = tick + Math.round(rnd(10, 40));
+    }
+    s.glints = s.glints.filter(g => tick - g.start <= g.life);
+  }
+
+  if (kind === "bloom") {
+    if (tick >= s.nextBloom && s.blooms.length < 2 && bar.filled > 4) {
+      s.blooms.push({ x: rnd(1.5, bar.filled - 2.5), start: tick, life: Math.round(rnd(16, 30)), peak: rnd(0.08, 0.11) });
+      s.nextBloom = tick + Math.round(rnd(18, 55));
+    }
+    s.blooms = s.blooms.filter(b => tick - b.start <= b.life);
+  }
+}
+
+// base fill tint per cell (before overrides)
+function fillTint(bar, x, tick) {
+  const kind = bar.variant, pct = bar.pct;
+
+  // below 30%: the shared alarm pulse (as installed)
+  if (pct < 30) {
+    const severity = clamp((30 - pct) / 30, 0, 1);
+    const amount = 0.1 + severity * 0.35;
+    const rate = 0.25 + severity * 0.3;
+    return quant(mix(bar.base, "#FFFFFF", amount * (0.5 + 0.5 * Math.sin(tick * rate))));
+  }
+
+  const s = bar.seed;
+  let A = 0;
+
+  if (kind === "grain") {
+    // fine spatial noise, temporally smooth (neighbours decorrelated, each cell evolves slowly)
+    const n =
+      0.5 +
+      0.22 * Math.sin(tick * 0.031 + x * 2.7 + s) +
+      0.18 * Math.sin(tick * 0.047 + x * 1.9 + s * 2.3) +
+      0.10 * Math.sin(tick * 0.013 + x * 3.1 + s * 4.1);
+    A = 0.02 + 0.085 * clamp(n, 0, 1);
+    A += 0.015 * (0.5 + 0.5 * Math.sin(tick * 0.02 + s));      // slow global sigh
+  } else if (kind === "edge") {
+    A = 0.022 + 0.02 * (0.5 + 0.5 * Math.sin(x * 0.3 - tick * 0.03 + s));  // faint wash
+    if (x === bar.filled - 1) {
+      A = 0.05 + 0.09 * (0.5 + 0.5 * Math.sin(tick * 0.11 + s));           // edge breathes
+    } else if (x === bar.filled - 2) {
+      A = 0.035 + 0.05 * (0.5 + 0.5 * Math.sin(tick * 0.11 + s + 0.9));    // neighbour follows
+    }
+  } else if (kind === "moire") {
+    const w =
+      0.5 +
+      (1 / 6) * (
+        Math.sin(x * 0.90 - tick * 0.043 + s) +
+        Math.sin(x * 0.72 + tick * 0.031 + s * 1.7) +
+        Math.sin(x * 0.61 - tick * 0.017 + s * 2.9)
+      );
+    A = 0.015 + 0.075 * clamp(w, 0, 1);
+  } else if (kind === "filament") {
+    const isFilament = hash01((x + 1) * 31.7 + s * 11.3) > 0.52;
+    if (isFilament) {
+      A = 0.045 + 0.05 * Math.sin(tick * 0.034 + hash01((x + 1) * 7.7 + s) * 6.283);
+    } else {
+      A = 0.012 + 0.012 * (0.5 + 0.5 * Math.sin(x * 0.25 - tick * 0.02 + s));
+    }
+  } else if (kind === "bloom") {
+    A = 0.018 + 0.012 * (0.5 + 0.5 * Math.sin(x * 0.2 - tick * 0.025 + s));
+    for (const b of bar.state.blooms) {
+      const env = Math.sin(Math.PI * clamp((tick - b.start) / b.life, 0, 1));
+      const d = x - b.x;
+      A += b.peak * env * Math.exp(-(d * d) / (2 * 1.4 * 1.4));
+    }
+  }
+
+  A += machinedRamp(x, bar.filled);
+
+  let c = mix(bar.base, "#FFFFFF", clamp(A, 0, 0.35));
+
+  // glints (grain variant): rare single-cell catches of light
+  if (kind === "grain") {
+    for (const g of bar.state.glints) {
+      if (x === g.x) {
+        const age = (tick - g.start) / g.life;
+        const env = age < 0.4 ? age / 0.4 : 1 - (age - 0.4) / 0.6;
+        c = mix(c, "#FFFFFF", g.peak * env);
+      }
+    }
+  }
+
+  const glow = frontierGlow(bar.filled, x, tick, s);
+  if (glow > 0.004 && pct >= 30) c = mix(c, "#FFFFFF", glow);
+  return quant(c);
+}
+
+/* ---------- shared drop / ghost / flash mechanics (as installed) ---------- */
+
+function renderCells(bar, tick) {
+  const cells = [];
+  const ghostEnd = Math.ceil(bar.ghost);
+  const flash = bar.flash;
+  const flashI = flash ? Math.max(0, 1 - (tick - flash.start) / 6) : 0;
+  const ghostColor = mix(bar.base, BG, 0.55);
+
+  for (let x = 0; x < CELLS; x++) {
+    let glyph = "░", color = MUTED;
+
+    if (x < bar.filled) {
+      glyph = "█";
+      color = fillTint(bar, x, tick);
+    } else if (flash && flashI > 0 && x >= flash.from && x < flash.to) {
+      glyph = "█";
+      color = quant(mix(bar.base, "#FFFFFF", 0.2 + 0.6 * flashI));
+    } else if (x < ghostEnd) {
+      glyph = "▒";
+      color = quant(ghostColor);
+    }
+
+    cells.push({ glyph, color });
+  }
+  return cells;
+}
+
+function stepShared(bar, tick) {
+  if (bar.ghost > bar.filled) {
+    bar.ghost -= (bar.ghost - bar.filled) * 0.03;
+    if (bar.ghost - bar.filled < 0.05) bar.ghost = bar.filled;
+  }
+  if (bar.flash && tick - bar.flash.start > 6) bar.flash = null;
+}
+
+/* ---------- DOM ---------- */
+
+const rowsEl = document.getElementById("rows");
+const rowEls = [];
+
+for (const bar of bars) {
+  const card = document.createElement("div");
+  card.className = "card";
+  card.innerHTML =
+    `<h2><span class="num">#${bar.n}</span>${bar.name}</h2>` +
+    `<div class="vibe">${bar.vibe}</div>` +
+    `<div class="barbox"></div>` +
+    `<div class="note"></div>`;
+  rowsEl.appendChild(card);
+  rowEls.push({
+    bar,
+    box: card.querySelector(".barbox"),
+    note: card.querySelector(".note"),
+  });
+}
+
+function renderBar(row, tick) {
+  const bar = row.bar;
+  const cells = renderCells(bar, tick);
+  const barHtml = cells.map(c => `<span style="color:${c.color}">${c.glyph}</span>`).join("");
+  const label = `${bar.pct}% left`;
+  const pad = label.padStart(9);
+  const m = pad.match(/^(\s*)(\d+%)(\s.*)$/);
+  const labelHtml = m
+    ? `<span class="lbl-l">${m[1]}</span><span style="color:${bar.base}">${m[2]}</span><span class="lbl-l">${m[3]}</span>`
+    : `<span class="lbl-l">${pad}</span>`;
+  row.box.innerHTML = barHtml + "  " + labelHtml;
+}
+
+document.getElementById("drop").addEventListener("click", () => {
+  for (const bar of bars) {
+    const prev = bar.filled;
+    bar.pct = Math.max(31, bar.pct - Math.round(rnd(8, 16)));
+    bar.filled = Math.round((bar.pct / 100) * CELLS);
+    if (bar.filled < prev) {
+      bar.flash = { from: bar.filled, to: prev, start: tick };
+      bar.ghost = Math.max(bar.ghost, prev);
+    }
+  }
+});
+
+let tick = 0;
+setInterval(() => {
+  tick++;
+  for (const row of rowEls) {
+    variantStep(row.bar, tick);
+    stepShared(row.bar, tick);
+    renderBar(row, tick);
+  }
+}, TICK_MS);
+
+for (const row of rowEls) renderBar(row, 0);
+</script>
+</body>
+</html>

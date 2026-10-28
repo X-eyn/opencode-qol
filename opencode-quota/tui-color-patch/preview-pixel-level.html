@@ -1,0 +1,284 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Quota Bar — Pixel-Level Preview (sub-cell)</title>
+<style>
+  :root {
+    --bg: #141210;
+    --panel: #1d1a16;
+    --panel-edge: #3a332c;
+    --text: #cfc6bb;
+    --muted: #8a7f74;
+    --dim: #5c554d;
+    --accent: #e8863c;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 28px 22px 60px;
+    background: var(--bg); color: var(--text);
+    font-family: "Cascadia Mono", "JetBrains Mono", Consolas, "Courier New", monospace;
+  }
+  h1 { font-size: 19px; margin: 0 0 6px; color: #efe7dc; }
+  .sub { color: var(--muted); font-size: 13px; margin-bottom: 6px; line-height: 1.65; max-width: 840px; }
+  .sub b { color: var(--accent); font-weight: 600; }
+  .toolbar { margin: 18px 0 22px; display: flex; gap: 22px; align-items: center; flex-wrap: wrap; }
+  .ctl { display: flex; gap: 8px; align-items: center; color: var(--muted); font-size: 12.5px; }
+  .ctl input { accent-color: var(--accent); }
+  button {
+    font: inherit; font-size: 13px;
+    background: #2a241e; color: var(--text);
+    border: 1px solid var(--panel-edge); border-radius: 6px;
+    padding: 7px 14px; cursor: pointer;
+  }
+  button:hover, button.on { border-color: var(--accent); color: #fff; }
+  .card {
+    background: var(--panel); border: 1px solid var(--panel-edge);
+    border-radius: 10px; padding: 16px 18px 13px; margin-bottom: 16px;
+    max-width: 840px;
+  }
+  .card h2 { font-size: 15px; margin: 0 0 2px; color: #efe7dc; }
+  .card h2 .num { color: var(--accent); margin-right: 8px; }
+  .vibe { color: var(--muted); font-size: 12.5px; margin: 0 0 12px; line-height: 1.55; }
+  .barwrap { display: flex; align-items: center; gap: 12px; }
+  canvas { display: block; image-rendering: pixelated; border-radius: 3px; }
+  .lbl { font-size: 15px; }
+  .lbl .dim { color: var(--dim); }
+  .glyphs {
+    margin-top: 14px; color: var(--muted); font-size: 12.5px;
+    white-space: pre; line-height: 1.5;
+  }
+  .glyphs b { color: var(--text); font-weight: normal; }
+  .foot { color: var(--dim); font-size: 12px; max-width: 840px; line-height: 1.7; }
+</style>
+</head>
+<body>
+
+<h1>Pixel-Level Preview — sub-cell rendering</h1>
+<div class="sub">
+  Each terminal cell here is a true <b>2×2 pixel block</b> (the rendering your terminal will do with quadrant
+  glyphs + fg/bg colors). A 21-cell bar becomes an <b>84-pixel canvas</b>: sub-cell particles, half-pixel
+  edges, motion that steps in quarter-cells instead of whole cells.<br>
+  Rendered at <b>120 ms</b> (real TUI clock). Use <b>Slow-mo 0.25×</b> to inspect the smoothness, and
+  <b>Grid</b> to see the sub-pixels. The impressive set stays as-is — this page is about the resolution
+  upgrade technique.
+</div>
+
+<div class="toolbar">
+  <div class="ctl"><label><input id="slowmo" type="checkbox"> Slow-mo 0.25×</label></div>
+  <div class="ctl"><label><input id="grid" type="checkbox"> Show sub-pixel grid</label></div>
+</div>
+
+<div id="rows"></div>
+
+<div class="card">
+  <h2><span class="num">◈</span>Glyph check (your browser font)</h2>
+  <div class="vibe">In the real TUI these characters + two colors per cell draw the pixel blocks. Your terminal font must contain them (most monospace fonts do — same Unicode block as █▓▒░).</div>
+  <div class="glyphs" id="glyphs"></div>
+</div>
+
+<div class="foot">
+  42×2 = 84 pixels per bar. Per cell, the two colors are fg + bg; the quadrant glyph selects which of the four
+  sub-pixels get which. That is the full extent of what a terminal can do — and it is 4× more resolution than
+  the current 21-cell rendering.<br><br>
+  If the motion quality feels right, tell me which of your animations to re-render at this resolution (the
+  Starfield trails and Plasma surges get noticeably silkier), or describe a custom one — I'll build it in the
+  TUI with a glyph test first.
+</div>
+
+<script>
+"use strict";
+
+/* ================= pixel canvas engine =================
+   true 2x2 sub-cell resolution, exactly what the TUI will emit via
+   quadrant glyphs (fg/bg per cell). */
+
+const CELLS = 21;
+const SUB_W = CELLS * 2;      // 42 sub-columns
+const SUB_H = 2;              // 2 sub-rows
+const PX = 8;                 // css pixels per sub-pixel
+const DPR = 2;
+const TICK_MS = 120;
+
+const BG = "#1d1a16";
+const EMPTY_TOP = "#221d17";
+const EMPTY_BOT = "#1a1611";
+const MUTED = "#5c554d";
+const BLUE = "#7aa5f8";
+const ORANGE = "#f08a3c";
+
+function hexToRgb(hex) {
+  const m = hex.trim().match(/^#?([0-9a-f]{3}|[0-9a-f]{6})$/i);
+  if (!m) return null;
+  let h = m[1];
+  if (h.length === 3) h = h[0]+h[0]+h[1]+h[1]+h[2]+h[2];
+  return [parseInt(h.slice(0,2),16), parseInt(h.slice(2,4),16), parseInt(h.slice(4,6),16)];
+}
+function mix(a, b, t) {
+  const x = hexToRgb(a), y = hexToRgb(b);
+  if (!x || !y) return a;
+  const c = x.map((v,i) => Math.max(0, Math.min(255, Math.round(v + (y[i]-v)*t))));
+  return "#" + c.map(v => v.toString(16).padStart(2,"0")).join("");
+}
+function rnd(a, b) { return a + Math.random() * (b - a); }
+function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
+
+/* ================= demos ================= */
+
+const bars = [
+  { n: 1, name: "Silk Sheen", pct: 92, base: BLUE, kind: "sheen",
+    vibe: "A narrow glint glides at half-pixel precision — the band's leading edge moves in quarter-cells, not whole cells. Compare with the old whole-cell sheen: this is silk." },
+  { n: 2, name: "Ripple Edge", pct: 76, base: BLUE, kind: "ripple",
+    vibe: "The top edge undulates with a wave drawn at 42-pixel resolution — each sub-pixel gets its own shade, so the crest is smooth instead of stair-stepped." },
+  { n: 3, name: "Motes", pct: 64, base: ORANGE, kind: "motes",
+    vibe: "Quarter-cell fireflies: single sub-pixels drifting through the fill with a vertical bob, fading in and out. Molecular particles, not cell-sized blocks." },
+  { n: 4, name: "Precision Edge", pct: 55, base: ORANGE, kind: "edge",
+    vibe: "The fill boundary itself breathes, oscillating ±0.6 cell in smooth half-pixel steps with a soft meniscus glow. This is what the liquid end should have been." },
+];
+
+for (const bar of bars) {
+  bar.filledPx = Math.round((bar.pct / 100) * SUB_W);
+  bar.state = kindState(bar.kind);
+}
+
+function kindState(kind) {
+  if (kind === "motes") return { motes: [], next: 4 };
+  return {};
+}
+
+function stepBar(bar, t) {
+  const s = bar.state;
+  if (bar.kind === "motes") {
+    if (t >= s.next && s.motes.length < 7) {
+      s.motes.push({ u: rnd(-2, bar.filledPx * 0.85), ph: rnd(0, 6.28), speed: rnd(0.16, 0.3), born: t, life: rnd(40, 90) });
+      s.next = t + rnd(2, 6);
+    }
+    for (const m of s.motes) m.u += m.speed;
+    s.motes = s.motes.filter(m => t - m.born < m.life && m.u < bar.filledPx + 3);
+  }
+}
+
+// returns color for one sub-pixel
+function samplePixel(bar, u, v, t) {
+  const base = bar.base;
+  const glossTop = mix(base, "#ffffff", 0.12);
+  const glossBot = mix(base, BG, 0.22);
+  const rowGloss = v === 0 ? glossTop : glossBot;
+
+  if (u >= bar.filledPx && !(bar.kind === "edge")) {
+    return v === 0 ? EMPTY_TOP : EMPTY_BOT;
+  }
+
+  switch (bar.kind) {
+    case "sheen": {
+      if (u >= bar.filledPx) return v === 0 ? EMPTY_TOP : EMPTY_BOT;
+      const span = SUB_W + 14;
+      const p = -7 + ((t * 0.7) % span);
+      const d = u - p;
+      const b = Math.exp(-(d * d) / (2 * 2.2 * 2.2)) * 0.42;
+      return mix(rowGloss, "#ffffff", b);
+    }
+    case "ripple": {
+      if (u >= bar.filledPx) return v === 0 ? EMPTY_TOP : EMPTY_BOT;
+      const h = 0.5 + 0.28 * Math.sin(u * 0.35 - t * 0.16) + 0.18 * Math.sin(u * 0.13 + t * 0.09);
+      if (v === 0) return mix(glossTop, mix(base, "#ffffff", 0.45), Math.pow(clamp(h, 0, 1), 1.2));
+      return glossBot;
+    }
+    case "motes": {
+      let glow = 0;
+      for (const m of bar.state.motes) {
+        const age = (t - m.born) / m.life;
+        const env = Math.sin(Math.PI * clamp(age, 0, 1));
+        const mv = 0.5 + 0.5 * Math.sin(t * 0.28 + m.ph);
+        const du = Math.abs(u - m.u);
+        const dv = Math.abs(v - mv);
+        if (du < 1.5 && dv < 1.5) {
+          glow += Math.max(0, 1 - du * 0.9) * Math.max(0, 1 - dv * 1.4) * env;
+        }
+      }
+      const isFill = u < bar.filledPx;
+      const under = isFill ? mix(rowGloss, BG, 0.25) : (v === 0 ? EMPTY_TOP : EMPTY_BOT);
+      return glow > 0.06 ? mix(under, "#fff8e0", clamp(glow * 0.85, 0, 0.9)) : under;
+    }
+    case "edge": {
+      const e = bar.filledPx + 1.2 * Math.sin(t * 0.1 + 1.3);
+      if (u < e) {
+        const edgeDist = e - u;
+        const lift = edgeDist < 2.5 ? (1 - edgeDist / 2.5) * 0.28 : 0;
+        return mix(rowGloss, "#ffffff", lift);
+      }
+      return v === 0 ? EMPTY_TOP : EMPTY_BOT;
+    }
+  }
+  return rowGloss;
+}
+
+/* ================= DOM ================= */
+
+const rowsEl = document.getElementById("rows");
+const cards = [];
+
+for (const bar of bars) {
+  const card = document.createElement("div");
+  card.className = "card";
+  card.innerHTML =
+    `<h2><span class="num">#${bar.n}</span>${bar.name}</h2>` +
+    `<p class="vibe">${bar.vibe}</p>` +
+    `<div class="barwrap"><canvas></canvas><div class="lbl"><span class="pct"></span><span class="dim"> left</span></div></div>`;
+  rowsEl.appendChild(card);
+  const canvas = card.querySelector("canvas");
+  canvas.width = SUB_W * PX * DPR;
+  canvas.height = SUB_H * PX * DPR;
+  canvas.style.width = `${SUB_W * PX}px`;
+  canvas.style.height = `${SUB_H * PX}px`;
+  const ctx = canvas.getContext("2d");
+  ctx.scale(DPR, DPR);
+  card.querySelector(".pct").textContent = `${bar.pct}%`;
+  card.querySelector(".pct").style.color = bar.base;
+  cards.push({ bar, canvas, ctx });
+}
+
+// glyph sampler
+document.getElementById("glyphs").innerHTML =
+  `quadrants: <b>▘▝▖▗▀▄▌▐▚▞▙▟▛▜█</b> &nbsp; halves: <b>▀▄</b> &nbsp; bars: <b>█▓▒░</b><br>` +
+  `(if any of these render as empty boxes in your terminal font, we ship a test strip before installing)`;
+
+const slowmoEl = document.getElementById("slowmo");
+const gridEl = document.getElementById("grid");
+
+let t = 0;
+function frame() {
+  const step = slowmoEl.checked ? 0.25 : 1;
+  t += step;
+  const showGrid = gridEl.checked;
+
+  for (const { bar, ctx } of cards) {
+    stepBar(bar, t);
+    for (let u = 0; u < SUB_W; u++) {
+      for (let v = 0; v < SUB_H; v++) {
+        ctx.fillStyle = samplePixel(bar, u, v, t);
+        ctx.fillRect(u * PX, v * PX, PX, PX);
+      }
+    }
+    if (showGrid) {
+      ctx.strokeStyle = "rgba(255,255,255,0.13)";
+      ctx.lineWidth = 1;
+      for (let u = 0; u <= SUB_W; u++) {
+        ctx.beginPath();
+        ctx.moveTo(u * PX + 0.5, 0);
+        ctx.lineTo(u * PX + 0.5, SUB_H * PX);
+        ctx.stroke();
+      }
+      ctx.beginPath();
+      ctx.moveTo(0, PX + 0.5);
+      ctx.lineTo(SUB_W * PX, PX + 0.5);
+      ctx.stroke();
+    }
+  }
+}
+
+setInterval(frame, TICK_MS);
+frame();
+</script>
+</body>
+</html>

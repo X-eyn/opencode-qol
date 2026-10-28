@@ -1,0 +1,423 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Quota Bar — Pixel-Grid Showcase</title>
+<style>
+  :root {
+    --bg: #141210;
+    --panel: #1d1a16;
+    --panel-edge: #3a332c;
+    --text: #cfc6bb;
+    --muted: #8a7f74;
+    --dim: #5c554d;
+    --accent: #e8863c;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 28px 22px 60px;
+    background: var(--bg); color: var(--text);
+    font-family: "Cascadia Mono", "JetBrains Mono", Consolas, "Courier New", monospace;
+  }
+  h1 { font-size: 19px; margin: 0 0 6px; color: #efe7dc; }
+  .sub { color: var(--muted); font-size: 13px; margin-bottom: 6px; line-height: 1.65; max-width: 860px; }
+  .sub b { color: var(--accent); font-weight: 600; }
+  .toolbar { margin: 18px 0 22px; display: flex; gap: 22px; align-items: center; flex-wrap: wrap; }
+  .ctl { display: flex; gap: 8px; align-items: center; color: var(--muted); font-size: 12.5px; }
+  .ctl input[type="range"] { width: 140px; accent-color: var(--accent); }
+  .ctl input[type="checkbox"] { accent-color: var(--accent); }
+  .ctl output { color: var(--text); min-width: 34px; text-align: right; }
+  .card {
+    background: var(--panel); border: 1px solid var(--panel-edge);
+    border-radius: 10px; padding: 16px 18px 13px; margin-bottom: 16px;
+    max-width: 860px;
+  }
+  .card h2 { font-size: 15px; margin: 0 0 2px; color: #efe7dc; }
+  .card h2 .num { color: var(--accent); margin-right: 8px; }
+  .vibe { color: var(--muted); font-size: 12.5px; margin: 0 0 12px; line-height: 1.55; }
+  .barwrap { display: flex; align-items: center; gap: 12px; }
+  canvas { display: block; image-rendering: pixelated; border-radius: 3px; }
+  .lbl { font-size: 15px; }
+  .lbl .dim { color: var(--dim); }
+  .glyphs { margin-top: 14px; color: var(--muted); font-size: 12.5px; white-space: pre; line-height: 1.5; }
+  .glyphs b { color: var(--text); font-weight: normal; }
+  .foot { color: var(--dim); font-size: 12px; max-width: 860px; line-height: 1.7; }
+</style>
+</head>
+<body>
+
+<h1>Pixel-Grid Showcase — 84 pixels, 2 lanes</h1>
+<div class="sub">
+  Six animations designed specifically for the sub-cell canvas: <b>42 × 2 = 84 pixels</b> per bar, with
+  two lanes of vertical motion inside one text row. All at the real <b>120 ms</b> clock.<br>
+  Use <b>Intensity</b> to season (0.5–2.5×), <b>Speed</b> to breathe (0.5–2.5×), <b>Slow-mo</b> to inspect,
+  and <b>Grid</b> to see the pixels. The impressive set stays untouched — this is the next tier.
+</div>
+
+<div class="toolbar">
+  <div class="ctl">Intensity <input id="intensity" type="range" min="0.5" max="2.5" step="0.25" value="1"><output id="ampVal">1×</output></div>
+  <div class="ctl">Speed <input id="speed" type="range" min="0.5" max="2.5" step="0.25" value="1"><output id="spdVal">1×</output></div>
+  <div class="ctl"><label><input id="slowmo" type="checkbox"> Slow-mo 0.25×</label></div>
+  <div class="ctl"><label><input id="grid" type="checkbox"> Grid</label></div>
+</div>
+
+<div id="rows"></div>
+
+<div class="card">
+  <h2><span class="num">◈</span>Glyph check</h2>
+  <div class="vibe">In the real TUI, each 2×2 pixel block is drawn as one of these characters with two colors (fg + bg). Your terminal font needs them — if any render as boxes, we ship a test strip before installing.</div>
+  <div class="glyphs" id="glyphs"></div>
+</div>
+
+<div class="foot">
+  Everything here uses the same palette and math the TUI patch will use: bucket color as the base, white/light
+  mixes for energy, exact 8-step quantization, ghosts/pulse untouched.<br><br>
+  Tell me which to ship (or “#4 with #3’s trails”, or a custom idea) — I’ll port it with a glyph test first.
+</div>
+
+<script>
+"use strict";
+
+/* ---------- engine: true 2x2 sub-cell canvas ---------- */
+
+const CELLS = 21;
+const SUB_W = CELLS * 2;   // 42
+const SUB_H = 2;           // 2 lanes
+const PX = 10;
+const DPR = 2;
+const TICK_MS = 120;
+
+const BG = "#1d1a16";
+const EMPTY_TOP = "#221d17";
+const EMPTY_BOT = "#1a1611";
+const BLUE = "#7aa5f8";
+const ORANGE = "#f08a3c";
+
+function hexToRgb(hex) {
+  const m = hex.trim().match(/^#?([0-9a-f]{3}|[0-9a-f]{6})$/i);
+  if (!m) return null;
+  let h = m[1];
+  if (h.length === 3) h = h[0]+h[0]+h[1]+h[1]+h[2]+h[2];
+  return [parseInt(h.slice(0,2),16), parseInt(h.slice(2,4),16), parseInt(h.slice(4,6),16)];
+}
+function mix(a, b, t2) {
+  const x = hexToRgb(a), y = hexToRgb(b);
+  if (!x || !y) return a;
+  const c = x.map((v,i) => Math.max(0, Math.min(255, Math.round(v + (y[i]-v)*t2))));
+  return "#" + c.map(v => v.toString(16).padStart(2,"0")).join("");
+}
+function rnd(a = 0, b = 1) { return a + Math.random() * (b - a); }
+function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
+
+/* ---------- bars ---------- */
+
+const bars = [
+  { n: 1, name: "Magma", pct: 58, base: ORANGE, kind: "magma",
+    vibe: "A molten core under a dark crust: the bottom lane flows with heat, and 1-pixel cracks of light open, widen, and seal again at random — plus slow hot surges rolling through." },
+  { n: 2, name: "Weave", pct: 80, base: BLUE, kind: "weave",
+    vibe: "A strand of light travels the bar, weaving between the two lanes and leaving a fading zigzag trail. Every other pass, a second strand braids through from the opposite phase." },
+  { n: 3, name: "Warp Trails", pct: 68, base: BLUE, kind: "warp",
+    vibe: "Single-pixel stars accelerate to the frontier with 8-pixel fading trails, scattered across both lanes — and occasionally, one long shooting star tears across the whole bar." },
+  { n: 4, name: "Silk Surge", pct: 92, base: BLUE, kind: "surge",
+    vibe: "The lightsaber, pixel-grade: a sub-pixel white-hot tip, a fast energy hum that alternates lane-to-lane like vibration, and bright packets racing in to flash on arrival." },
+  { n: 5, name: "ECG Precision", pct: 72, base: ORANGE, kind: "ecg",
+    vibe: "The heart monitor, now anatomical: a 1-pixel baseline trace on the bottom lane, P and T waves as gentle rises, and the QRS spike as a true 2-pixel-tall white flash rolling left." },
+  { n: 6, name: "Aurora Lanes", pct: 84, base: BLUE, kind: "aurora",
+    vibe: "Two aurora curtains, one per lane, drifting in opposite directions — braiding against each other at sub-pixel smoothness, with a bright flare crest every few seconds." },
+];
+
+for (const bar of bars) {
+  bar.filledPx = Math.round((bar.pct / 100) * SUB_W);
+  bar.state = kindState(bar.kind);
+  bar.seed = rnd(0, 6.28);
+}
+
+function kindState(kind) {
+  if (kind === "magma") return { cracks: [], nextCrack: 8, surges: [], nextSurge: 30 };
+  if (kind === "weave") return { trail: [], t0: 0, braid: false, pass: 0 };
+  if (kind === "warp") return { stars: [], next: 3, shooter: null, nextShooter: 120 };
+  if (kind === "surge") return { surges: [], next: 6, lastLand: -99 };
+  if (kind === "aurora") return { flare: null, nextFlare: 60 };
+  return {};
+}
+
+function stepBar(bar, t) {
+  const s = bar.state, kind = bar.kind;
+  const fill = bar.filledPx;
+
+  if (kind === "magma") {
+    if (t >= s.nextCrack) {
+      s.cracks.push({ u: rnd(1, Math.max(2, fill - 3)), w: 1, born: t, life: rnd(14, 30) });
+      s.nextCrack = t + rnd(6, 16);
+    }
+    for (const c of s.cracks) {
+      const a = (t - c.born) / c.life;
+      c.w = a < 0.4 ? 1 + Math.floor(a * 5) : Math.max(1, Math.round(3 * (1 - (a - 0.4))));
+    }
+    s.cracks = s.cracks.filter(c => t - c.born < c.life);
+    if (t >= s.nextSurge) {
+      s.surges.push({ p: -4 });
+      s.nextSurge = t + rnd(40, 70);
+    }
+    for (const su of s.surges) su.p += 0.6;
+    s.surges = s.surges.filter(su => su.p < fill + 4);
+  }
+
+  if (kind === "weave") {
+    const u1 = (t - s.t0) * 0.55 - 2;
+    if (u1 > SUB_W + 3) {
+      s.t0 = t + rnd(5, 12);
+      s.pass++;
+      s.braid = s.pass % 2 === 0;
+      s.trail = [];
+    } else if (u1 > -2) {
+      const v1 = Math.sin(u1 * 0.5) > 0 ? 0 : 1;
+      s.trail.push({ u: u1, v: v1, born: t });
+      if (s.braid) {
+        const u2 = u1 - SUB_W / 2;
+        if (u2 > -2) s.trail.push({ u: u2, v: 1 - v1, born: t });
+      }
+    }
+    s.trail = s.trail.filter(p => t - p.born < 16 && p.u > -2);
+  }
+
+  if (kind === "warp") {
+    if (t >= s.next && s.stars.length < 5) {
+      s.stars.push({ u: rnd(0, fill * 0.7), v: rnd() < 0.5 ? 0 : 1, spd: rnd(0.4, 0.7), bright: rnd(0.55, 0.85) });
+      s.next = t + rnd(4, 9);
+    }
+    for (const st of s.stars) { st.spd *= 1.045; st.u += st.spd; }
+    s.stars = s.stars.filter(st => st.u < fill + 2);
+    if (t >= s.nextShooter && !s.shooter) {
+      s.shooter = { u: -6, v: rnd() < 0.5 ? 0 : 1 };
+      s.nextShooter = t + rnd(180, 380);
+    }
+    if (s.shooter) {
+      s.shooter.u += 1.5;
+      if (s.shooter.u > SUB_W + 4) s.shooter = null;
+    }
+  }
+
+  if (kind === "surge") {
+    if (t >= s.next) {
+      s.surges.push({ p: -3, spd: rnd(0.45, 0.65) });
+      s.next = t + rnd(12, 24);
+    }
+    for (const su of s.surges) { su.spd *= 1.06; su.p += su.spd; }
+    s.surges = s.surges.filter(su => { if (su.p >= fill - 1) { s.lastLand = t; return false; } return true; });
+  }
+
+  if (kind === "aurora") {
+    if (t >= s.nextFlare && !s.flare) {
+      s.flare = { p: -10, v: rnd() < 0.5 ? 0 : 1 };
+      s.nextFlare = t + rnd(90, 150);
+    }
+    if (s.flare) {
+      s.flare.p += 0.8;
+      if (s.flare.p > SUB_W + 12) s.flare = null;
+    }
+  }
+}
+
+function samplePixel(bar, u, v, t, AMP) {
+  const base = bar.base, s = bar.state, fill = bar.filledPx;
+  const glossTop = mix(base, "#ffffff", 0.10);
+  const glossBot = mix(base, BG, 0.16);
+  const inFill = u < fill;
+  let c = inFill ? (v === 0 ? glossTop : glossBot) : (v === 0 ? EMPTY_TOP : EMPTY_BOT);
+
+  switch (bar.kind) {
+    case "magma": {
+      if (!inFill) break;
+      if (v === 1) {
+        const heat = 0.30 + 0.12 * Math.sin(u * 0.35 - t * 0.18);
+        c = mix(glossBot, "#ffbf66", clamp(heat, 0, 0.6));
+        for (const su of s.surges) {
+          const d = u - su.p;
+          c = mix(c, "#ffe0a0", 0.30 * Math.exp(-(d * d) / (2 * 2.5 * 2.5)));
+        }
+      } else {
+        c = mix(glossTop, BG, 0.34);
+        for (const cr of s.cracks) {
+          if (u >= cr.u && u < cr.u + cr.w) {
+            const a = clamp((t - cr.born) / cr.life, 0, 1);
+            const env = a < 0.4 ? a / 0.4 : 1 - (a - 0.4) / 0.6;
+            c = mix(c, "#ffe9c0", 0.85 * env);
+          }
+        }
+      }
+      break;
+    }
+    case "weave": {
+      if (!inFill) break;
+      for (const p of s.trail) {
+        if (Math.floor(p.u) === u && p.v === v) {
+          const b = Math.exp(-(t - p.born) / 7) * 0.55;
+          c = mix(c, "#ffffff", b);
+        }
+      }
+      const u1 = (t - s.t0) * 0.55 - 2;
+      const head = s.braid
+        ? [u1, u1 - SUB_W / 2]
+        : [u1];
+      for (const hu of head) {
+        const hv = Math.sin(hu * 0.5) > 0 ? 0 : 1;
+        if (Math.abs(u - hu) < 1.2 && v === hv) c = mix(c, "#ffffff", 0.9);
+        else if (Math.abs(u - hu) < 2.2 && v === hv) c = mix(c, "#ffffff", 0.35);
+      }
+      break;
+    }
+    case "warp": {
+      for (const st of s.stars) {
+        const dh = u - Math.floor(st.u);
+        if (dh === 0 && v === st.v) c = mix(c, "#eef6ff", 0.9 * st.bright);
+        for (let d = 1; d <= 6; d++) {
+          if (Math.floor(st.u) - d === u && v === st.v) {
+            c = mix(c, "#cfe2ff", st.bright * Math.exp(-d / 1.9) * 0.85);
+          }
+        }
+      }
+      if (s.shooter && v === s.shooter.v) {
+        const head = Math.floor(s.shooter.u);
+        for (let d = 0; d <= 14; d++) {
+          if (head - d === u) c = mix(c, "#ffffff", (1 - d / 15) * 0.95);
+        }
+      }
+      break;
+    }
+    case "surge": {
+      if (!inFill) break;
+      const dTip = fill - 1 - u;
+      if (dTip >= 0 && dTip <= 3) {
+        c = mix(c, "#ffffff", (0.75 - dTip * 0.18) * (v === 1 ? 1 : 0.85));
+      }
+      const hv = 0.5 + 0.5 * Math.sin(u * 0.8 - t * 0.5);
+      c = mix(c, "#ffffff", (v === 0 ? 0.10 * hv : 0.10 * (1 - hv)));
+      for (const su of s.surges) {
+        const d = u - su.p;
+        c = mix(c, "#ffffff", 0.40 * Math.exp(-(d * d) / (2 * 1.6 * 1.6)));
+      }
+      const since = t - s.lastLand;
+      if (since >= 0 && since < 3 && dTip >= 0 && dTip <= 1) c = mix(c, "#ffffff", 0.3 * (1 - since / 3));
+      break;
+    }
+    case "ecg": {
+      if (!inFill) break;
+      const P = 24;
+      const phase = (((t - (fill - u)) % P) + P) % P;
+      if (v === 1) c = mix(c, "#ffffff", 0.06);                       // baseline trace
+      if (phase >= 5 && phase <= 7) { if (v === 1) c = mix(c, "#ffffff", 0.28); }
+      else if (phase >= 9 && phase <= 10.5) {
+        c = mix(c, "#ffffff", v === 1 ? 0.85 : 0.7);                  // 2-pixel-tall QRS
+      } else if (phase >= 13 && phase <= 17) { if (v === 1) c = mix(c, "#ffffff", 0.35); }
+      break;
+    }
+    case "aurora": {
+      if (!inFill) break;
+      if (v === 0) {
+        c = mix(c, "#ffffff", 0.16 * (0.5 + 0.5 * Math.sin(u * 0.22 - t * 0.08 + bar.seed)));
+      } else {
+        c = mix(c, "#ffffff", 0.16 * (0.5 + 0.5 * Math.sin(u * 0.17 + t * 0.06 + 2 + bar.seed)));
+      }
+      if (s.flare && v === s.flare.v) {
+        const d = u - s.flare.p;
+        c = mix(c, "#ffffff", 0.22 * Math.exp(-(d * d) / (2 * 4 * 4)));
+      }
+      break;
+    }
+  }
+
+  if (AMP !== 1) {
+    // scale distance from the bucket's neutral tone
+    const neutral = inFill ? (v === 0 ? glossTop : glossBot) : c;
+    c = mix(neutral, c, AMP);
+  }
+  return c;
+}
+
+/* ---------- sliders ---------- */
+
+const intensityEl = document.getElementById("intensity");
+const speedEl = document.getElementById("speed");
+const ampValEl = document.getElementById("ampVal");
+const spdValEl = document.getElementById("spdVal");
+const slowmoEl = document.getElementById("slowmo");
+const gridEl = document.getElementById("grid");
+let AMP = 1, SPD = 1;
+function readSliders() {
+  const a = parseFloat(intensityEl.value), sp = parseFloat(speedEl.value);
+  AMP = clamp(Number.isFinite(a) ? a : 1, 0.25, 4);
+  SPD = clamp(Number.isFinite(sp) ? sp : 1, 0.25, 4);
+  ampValEl.textContent = `${AMP}×`;
+  spdValEl.textContent = `${SPD}×`;
+}
+intensityEl.addEventListener("input", readSliders);
+speedEl.addEventListener("input", readSliders);
+readSliders();
+
+/* ---------- DOM ---------- */
+
+const rowsEl = document.getElementById("rows");
+const cards = [];
+
+for (const bar of bars) {
+  const card = document.createElement("div");
+  card.className = "card";
+  card.innerHTML =
+    `<h2><span class="num">#${bar.n}</span>${bar.name}</h2>` +
+    `<p class="vibe">${bar.vibe}</p>` +
+    `<div class="barwrap"><canvas></canvas><div class="lbl"><span class="pct"></span><span class="dim"> left</span></div></div>`;
+  rowsEl.appendChild(card);
+  const canvas = card.querySelector("canvas");
+  canvas.width = SUB_W * PX * DPR;
+  canvas.height = SUB_H * PX * DPR;
+  canvas.style.width = `${SUB_W * PX}px`;
+  canvas.style.height = `${SUB_H * PX}px`;
+  const ctx = canvas.getContext("2d");
+  ctx.scale(DPR, DPR);
+  const pct = card.querySelector(".pct");
+  pct.textContent = `${bar.pct}%`;
+  pct.style.color = bar.base;
+  cards.push({ bar, ctx });
+}
+
+document.getElementById("glyphs").innerHTML =
+  `quadrants: <b>▘▝▖▗▀▄▌▐▚▞▙▟▛▜█</b> &nbsp; bars: <b>█▓▒░</b><br>` +
+  `(empty boxes = your terminal font is missing them; we test before installing)`;
+
+let t = 0;
+function frame() {
+  const dt = (slowmoEl.checked ? 0.25 : 1) * SPD;
+  t += dt;
+  const showGrid = gridEl.checked;
+  for (const { bar, ctx } of cards) {
+    stepBar(bar, t);
+    for (let u = 0; u < SUB_W; u++) {
+      for (let v = 0; v < SUB_H; v++) {
+        ctx.fillStyle = samplePixel(bar, u, v, t, AMP);
+        ctx.fillRect(u * PX, v * PX, PX, PX);
+      }
+    }
+    if (showGrid) {
+      ctx.strokeStyle = "rgba(255,255,255,0.12)";
+      ctx.lineWidth = 1;
+      for (let u = 0; u <= SUB_W; u++) {
+        ctx.beginPath();
+        ctx.moveTo(u * PX + 0.5, 0);
+        ctx.lineTo(u * PX + 0.5, SUB_H * PX);
+        ctx.stroke();
+      }
+      ctx.strokeStyle = "rgba(255,255,255,0.22)";
+      ctx.beginPath();
+      ctx.moveTo(0, PX + 0.5);
+      ctx.lineTo(SUB_W * PX, PX + 0.5);
+      ctx.stroke();
+    }
+  }
+}
+
+setInterval(frame, TICK_MS);
+frame();
+</script>
+</body>
+</html>

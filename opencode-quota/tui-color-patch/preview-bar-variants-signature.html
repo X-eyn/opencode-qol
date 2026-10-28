@@ -1,0 +1,352 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Quota Bar Animations — Signature Set</title>
+<style>
+  :root {
+    --bg: #141210;
+    --panel: #1d1a16;
+    --panel-edge: #3a332c;
+    --text: #cfc6bb;
+    --muted: #8a7f74;
+    --dim: #5c554d;
+    --accent: #e8863c;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 28px 22px 60px;
+    background: var(--bg); color: var(--text);
+    font-family: "Cascadia Mono", "JetBrains Mono", Consolas, "Courier New", monospace;
+  }
+  h1 { font-size: 19px; margin: 0 0 6px; color: #efe7dc; }
+  .sub { color: var(--muted); font-size: 13px; margin-bottom: 6px; line-height: 1.65; max-width: 820px; }
+  .sub b { color: var(--accent); font-weight: 600; }
+  .toolbar {
+    margin: 18px 0 22px; display: flex; gap: 26px; align-items: center; flex-wrap: wrap;
+  }
+  .ctl { display: flex; gap: 10px; align-items: center; color: var(--muted); font-size: 12.5px; }
+  .ctl input[type="range"] { width: 150px; accent-color: var(--accent); }
+  .ctl output { color: var(--text); min-width: 34px; text-align: right; }
+  button {
+    font: inherit; font-size: 13px;
+    background: #2a241e; color: var(--text);
+    border: 1px solid var(--panel-edge); border-radius: 6px;
+    padding: 7px 14px; cursor: pointer;
+  }
+  button:hover { border-color: var(--accent); color: #fff; }
+  .card {
+    background: var(--panel); border: 1px solid var(--panel-edge);
+    border-radius: 10px; padding: 16px 18px 13px; margin-bottom: 16px;
+    max-width: 820px;
+  }
+  .card h2 { font-size: 15px; margin: 0 0 2px; color: #efe7dc; }
+  .card h2 .num { color: var(--accent); margin-right: 8px; }
+  .vibe { color: var(--muted); font-size: 12.5px; margin-bottom: 12px; line-height: 1.55; }
+  .barbox {
+    font-size: 16px; line-height: 1.15; letter-spacing: 0;
+    white-space: pre; user-select: none;
+  }
+  .barbox .lbl-l { color: var(--dim); }
+  .foot { color: var(--dim); font-size: 12px; max-width: 820px; line-height: 1.7; }
+</style>
+</head>
+<body>
+
+<h1>Quota Bar Animations — Signature Set</h1>
+<div class="sub">
+  The middle ground: <b>clearly noticeable</b> motion, still smooth and coherent. At default settings (1×/1×)
+  each variant moves the fill by roughly <b>3–6 of the 32 visible 8-bit steps</b> — about 3× the micro set,
+  half the first set.<br>
+  Use the sliders: <b>Intensity 0.5× ≈ micro set</b>, <b>1× = signature default</b>, <b>2.5× = bold</b>.
+  <b>Speed 0.5× = glacial, 2.5× = brisk.</b> Dial any variant until it feels right and tell me the numbers.<br>
+  Shared essentials as installed: hot frontier, ghost trail, burn flash, sub-30% alarm. Real fidelity:
+  120 ms clock · 21-cell bars · real glyph/color math.
+</div>
+
+<div class="toolbar">
+  <div class="ctl">Intensity <input id="intensity" type="range" min="0.5" max="2.5" step="0.25" value="1"><output id="ampVal">1×</output></div>
+  <div class="ctl">Speed <input id="speed" type="range" min="0.5" max="2.5" step="0.25" value="1"><output id="spdVal">1×</output></div>
+  <button id="drop">▼ Simulate quota drop</button>
+</div>
+
+<div id="rows"></div>
+
+<div class="foot">
+  All five are one clear phenomenon each: a rolling light wave, a rhythmic beacon at the level, twin aurora
+  curtains, drifting fog, and a single strong twinkle. No chaos, no glyph churn — just each idea calibrated
+  to be visible.<br><br>
+  Tell me “ship #3 at 1.5×/1×” (or whatever combination looks right) and I’ll port it into the plugin.
+</div>
+
+<script>
+"use strict";
+
+/* ---------- shared utilities (identical to the TUI patch math) ---------- */
+
+const CELLS = 21;
+const TICK_MS = 120;
+const BG = "#1d1a16";
+const MUTED = "#5c554d";
+
+function hexToRgb(hex) {
+  const m = hex.trim().match(/^#?([0-9a-f]{3}|[0-9a-f]{6})$/i);
+  if (!m) return null;
+  let h = m[1];
+  if (h.length === 3) h = h[0]+h[0]+h[1]+h[1]+h[2]+h[2];
+  return [parseInt(h.slice(0,2),16), parseInt(h.slice(2,4),16), parseInt(h.slice(4,6),16)];
+}
+function mix(a, b, t) {
+  const x = hexToRgb(a), y = hexToRgb(b);
+  if (!x || !y) return a;
+  const c = x.map((v,i) => Math.max(0, Math.min(255, Math.round(v + (y[i]-v)*t))));
+  return "#" + c.map(v => v.toString(16).padStart(2,"0")).join("");
+}
+function quant(hex, s = 8) {
+  const x = hexToRgb(hex);
+  if (!x) return hex;
+  const c = x.map(v => Math.max(0, Math.min(255, Math.round(v/s)*s)));
+  return "#" + c.map(v => v.toString(16).padStart(2,"0")).join("");
+}
+function rnd(a, b) { return a + Math.random() * (b - a); }
+function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
+
+// shared frontier glow on the leading one or two cells (as installed)
+function frontierGlow(filled, x, tick, seed) {
+  const d = filled - 1 - x;
+  if (d < 0 || d > 1) return 0;
+  const strength = d === 0 ? 1 : 0.45;
+  const flicker =
+    0.5 +
+    0.3 * Math.sin(tick * 0.75 + seed) * Math.sin(tick * 1.9 + x * 0.6) +
+    0.2 * Math.sin(tick * 0.31 + x * 0.5 + seed);
+  return strength * (0.08 + 0.10 * clamp(flicker, 0, 1));
+}
+
+// a barely-there static ramp across the fill (machined shading), 0 -> 0.04
+function machinedRamp(x, filled) {
+  return filled <= 1 ? 0 : (x / (filled - 1)) * 0.04;
+}
+
+/* ---------- bars ---------- */
+
+const BLUE = "#7aa5f8", ORANGE = "#f08a3c";
+
+const bars = [
+  { n: 1, name: "Current",   pct: 96, base: BLUE,   variant: "current",
+    vibe: "A single smooth band of light rolls through the fill like light over moving water — one crest visible at a time, continuous, calm, unmistakably alive." },
+  { n: 2, name: "Beacon",    pct: 68, base: ORANGE, variant: "beacon",
+    vibe: "The level itself pulses: the leading cells swell into a bright beacon and relax, in a slow regular rhythm. Meaningful motion — the frontier is the message." },
+  { n: 3, name: "Aurora II", pct: 84, base: BLUE,   variant: "aurora",
+    vibe: "Twin curtains of light (one drifting each way) braid through the fill — the aurora from the first set, recalibrated to actually be seen." },
+  { n: 4, name: "Drift",     pct: 55, base: ORANGE, variant: "drift",
+    vibe: "A soft, wide pool of light wanders slowly back and forth through the fill like sun through a window — pendulum calm, never exits, never repeats exactly." },
+  { n: 5, name: "Twinkle",   pct: 91, base: BLUE,   variant: "twinkle",
+    vibe: "One strong glint at a time catches somewhere in the fill, blinks out over half a second, gone. Sparse, precise, jewel-like — the anti-chaos sparkle." },
+];
+
+for (const bar of bars) {
+  bar.filled = Math.round((bar.pct / 100) * CELLS);
+  bar.ghost = bar.filled;
+  bar.flash = null;
+  bar.seed = Math.random() * 6.28;
+  bar.state = variantState(bar.variant);
+}
+
+/* ---------- live sliders ---------- */
+
+const intensityEl = document.getElementById("intensity");
+const speedEl = document.getElementById("speed");
+const ampValEl = document.getElementById("ampVal");
+const spdValEl = document.getElementById("spdVal");
+let AMP = 1, SPD = 1;
+function readSliders() {
+  const a = parseFloat(intensityEl.value);
+  const s = parseFloat(speedEl.value);
+  AMP = clamp(Number.isFinite(a) ? a : 1, 0.25, 4);
+  SPD = clamp(Number.isFinite(s) ? s : 1, 0.25, 4);
+  ampValEl.textContent = `${AMP}×`;
+  spdValEl.textContent = `${SPD}×`;
+}
+intensityEl.addEventListener("input", readSliders);
+speedEl.addEventListener("input", readSliders);
+readSliders();
+
+/* ---------- variant engines ---------- */
+
+function variantState(kind) {
+  if (kind === "twinkle") return { glints: [], next: Math.round(rnd(6, 14)) };
+  return {};
+}
+
+function variantStep(bar, tick) {
+  const s = bar.state, kind = bar.variant;
+
+  if (kind === "twinkle") {
+    if (tick >= s.next && bar.filled > 2) {
+      s.glints.push({ x: Math.floor(rnd(1, Math.max(2, bar.filled - 1))), start: tick, life: rnd(5, 8) / SPD, peak: rnd(0.32, 0.42) });
+      s.next = tick + Math.round(rnd(7, 16) / SPD);
+    }
+    s.glints = s.glints.filter(g => tick - g.start <= g.life);
+  }
+}
+
+// base fill tint per cell (before overrides)
+function fillTint(bar, x, tick) {
+  const kind = bar.variant, pct = bar.pct;
+
+  // below 30%: the shared alarm pulse (as installed)
+  if (pct < 30) {
+    const severity = clamp((30 - pct) / 30, 0, 1);
+    const amount = 0.1 + severity * 0.35;
+    const rate = 0.25 + severity * 0.3;
+    return quant(mix(bar.base, "#FFFFFF", amount * (0.5 + 0.5 * Math.sin(tick * rate))));
+  }
+
+  const T = tick * SPD;
+  const s = bar.seed;
+  let A = 0.02;
+
+  if (kind === "current") {
+    A += AMP * 0.16 * (0.5 + 0.5 * Math.sin(x * 0.78 - T * 0.09 + s));
+  } else if (kind === "beacon") {
+    const P = 21;
+    const phase = (T % P) / P;
+    const eased = Math.pow(0.5 - 0.5 * Math.cos(2 * Math.PI * phase), 1.5);
+    A += AMP * 0.03 * (0.5 + 0.5 * Math.sin(x * 0.4 - T * 0.05 + s));
+    const d = bar.filled - 1 - x;
+    if (d >= 0 && d <= 3) {
+      const falloff = d === 0 ? 1 : d === 1 ? 0.55 : d === 2 ? 0.28 : 0.12;
+      A += AMP * 0.28 * eased * falloff;
+    }
+  } else if (kind === "aurora") {
+    A += AMP * 0.12 * (0.5 + 0.5 * Math.sin(x * 0.42 - T * 0.10 + s));
+    A += AMP * 0.09 * (0.5 + 0.5 * Math.sin(x * 0.23 + T * 0.06 + s * 2));
+  } else if (kind === "drift") {
+    const span = Math.max(2, bar.filled - 3);
+    const p = 1.5 + span * (0.5 + 0.5 * Math.sin(T * 0.055 + s));
+    const d = x - p;
+    A += AMP * 0.16 * Math.exp(-(d * d) / (2 * 2.6 * 2.6));
+  } else if (kind === "twinkle") {
+    A += AMP * 0.02 * (0.5 + 0.5 * Math.sin(x * 0.3 - T * 0.04 + s));
+  }
+
+  A += machinedRamp(x, bar.filled);
+
+  let c = mix(bar.base, "#FFFFFF", clamp(A, 0, 0.45));
+
+  // twinkle glints: one strong catch of light, with soft halos
+  if (kind === "twinkle") {
+    for (const g of bar.state.glints) {
+      const age = (tick - g.start) / g.life;
+      const env = age < 0.35 ? age / 0.35 : 1 - (age - 0.35) / 0.65;
+      if (env <= 0) continue;
+      const d = Math.abs(x - g.x);
+      if (d === 0) c = mix(c, "#FFFFFF", g.peak * env);
+      else if (d === 1) c = mix(c, "#FFFFFF", g.peak * env * 0.25);
+      else if (d === 2) c = mix(c, "#FFFFFF", g.peak * env * 0.08);
+    }
+  }
+
+  const glow = frontierGlow(bar.filled, x, tick, s);
+  if (glow > 0.004 && pct >= 30) c = mix(c, "#FFFFFF", glow);
+  return quant(c);
+}
+
+/* ---------- shared drop / ghost / flash mechanics (as installed) ---------- */
+
+function renderCells(bar, tick) {
+  const cells = [];
+  const ghostEnd = Math.ceil(bar.ghost);
+  const flash = bar.flash;
+  const flashI = flash ? Math.max(0, 1 - (tick - flash.start) / 6) : 0;
+  const ghostColor = mix(bar.base, BG, 0.55);
+
+  for (let x = 0; x < CELLS; x++) {
+    let glyph = "░", color = MUTED;
+
+    if (x < bar.filled) {
+      glyph = "█";
+      color = fillTint(bar, x, tick);
+    } else if (flash && flashI > 0 && x >= flash.from && x < flash.to) {
+      glyph = "█";
+      color = quant(mix(bar.base, "#FFFFFF", 0.2 + 0.6 * flashI));
+    } else if (x < ghostEnd) {
+      glyph = "▒";
+      color = quant(ghostColor);
+    }
+
+    cells.push({ glyph, color });
+  }
+  return cells;
+}
+
+function stepShared(bar, tick) {
+  if (bar.ghost > bar.filled) {
+    bar.ghost -= (bar.ghost - bar.filled) * 0.03;
+    if (bar.ghost - bar.filled < 0.05) bar.ghost = bar.filled;
+  }
+  if (bar.flash && tick - bar.flash.start > 6) bar.flash = null;
+}
+
+/* ---------- DOM ---------- */
+
+const rowsEl = document.getElementById("rows");
+const rowEls = [];
+
+for (const bar of bars) {
+  const card = document.createElement("div");
+  card.className = "card";
+  card.innerHTML =
+    `<h2><span class="num">#${bar.n}</span>${bar.name}</h2>` +
+    `<div class="vibe">${bar.vibe}</div>` +
+    `<div class="barbox"></div>` +
+    `<div class="note"></div>`;
+  rowsEl.appendChild(card);
+  rowEls.push({
+    bar,
+    box: card.querySelector(".barbox"),
+    note: card.querySelector(".note"),
+  });
+}
+
+function renderBar(row, tick) {
+  const bar = row.bar;
+  const cells = renderCells(bar, tick);
+  const barHtml = cells.map(c => `<span style="color:${c.color}">${c.glyph}</span>`).join("");
+  const label = `${bar.pct}% left`;
+  const pad = label.padStart(9);
+  const m = pad.match(/^(\s*)(\d+%)(\s.*)$/);
+  const labelHtml = m
+    ? `<span class="lbl-l">${m[1]}</span><span style="color:${bar.base}">${m[2]}</span><span class="lbl-l">${m[3]}</span>`
+    : `<span class="lbl-l">${pad}</span>`;
+  row.box.innerHTML = barHtml + "  " + labelHtml;
+}
+
+document.getElementById("drop").addEventListener("click", () => {
+  for (const bar of bars) {
+    const prev = bar.filled;
+    bar.pct = Math.max(31, bar.pct - Math.round(rnd(8, 16)));
+    bar.filled = Math.round((bar.pct / 100) * CELLS);
+    if (bar.filled < prev) {
+      bar.flash = { from: bar.filled, to: prev, start: tick };
+      bar.ghost = Math.max(bar.ghost, prev);
+    }
+  }
+});
+
+let tick = 0;
+setInterval(() => {
+  tick++;
+  readSliders();
+  for (const row of rowEls) {
+    variantStep(row.bar, tick);
+    stepShared(row.bar, tick);
+    renderBar(row, tick);
+  }
+}, TICK_MS);
+
+for (const row of rowEls) renderBar(row, 0);
+</script>
+</body>
+</html>

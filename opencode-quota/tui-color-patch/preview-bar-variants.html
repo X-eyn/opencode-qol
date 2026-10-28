@@ -1,0 +1,422 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Quota Bar Animations — Preview</title>
+<style>
+  :root {
+    --bg: #141210;
+    --panel: #1d1a16;
+    --panel-edge: #3a332c;
+    --text: #cfc6bb;
+    --muted: #8a7f74;
+    --dim: #5c554d;
+    --accent: #e8863c;
+    --blue: #7aa5f8;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 28px 22px 60px;
+    background: var(--bg); color: var(--text);
+    font-family: "Cascadia Mono", "JetBrains Mono", Consolas, "Courier New", monospace;
+  }
+  h1 { font-size: 19px; margin: 0 0 6px; color: #efe7dc; }
+  .sub { color: var(--muted); font-size: 13px; margin-bottom: 6px; line-height: 1.6; }
+  .sub b { color: var(--accent); font-weight: 600; }
+  .toolbar { margin: 18px 0 22px; }
+  button {
+    font: inherit; font-size: 13px;
+    background: #2a241e; color: var(--text);
+    border: 1px solid var(--panel-edge); border-radius: 6px;
+    padding: 7px 14px; cursor: pointer;
+  }
+  button:hover { border-color: var(--accent); color: #fff; }
+  .card {
+    background: var(--panel); border: 1px solid var(--panel-edge);
+    border-radius: 10px; padding: 16px 18px 13px; margin-bottom: 16px;
+    max-width: 760px;
+  }
+  .card h2 { font-size: 15px; margin: 0 0 2px; color: #efe7dc; }
+  .card h2 .num { color: var(--accent); margin-right: 8px; }
+  .vibe { color: var(--muted); font-size: 12.5px; margin-bottom: 12px; line-height: 1.5; }
+  .barbox {
+    font-size: 16px; line-height: 1.15; letter-spacing: 0;
+    white-space: pre; user-select: none;
+  }
+  .barbox .lbl-l { color: var(--dim); }
+  .note { color: #6f665c; font-size: 12px; margin-top: 10px; line-height: 1.55; }
+  .note b { color: #a99d8f; font-weight: 600; }
+  .foot { color: var(--dim); font-size: 12px; max-width: 760px; line-height: 1.7; }
+</style>
+</head>
+<body>
+
+<h1>Quota Bar Animations — Preview</h1>
+<div class="sub">
+  Real fidelity: <b>120 ms clock</b> (the actual TUI speed) · <b>21-cell bars</b> (the actual 32-column sidebar width)
+  · glyphs <b>█ ▓ ▒ ░</b> · the exact color math the TUI will run.<br>
+  All five already include the shared essentials: the soft <b>hot frontier</b> on the leading edge, the
+  <b>ghost trail</b> after drops, the <b>burn flash</b>, and the <b>sub-30% alarm pulse</b> (bar 5 shows it).
+  Hit <b>“Simulate quota drop”</b> to see how each variant behaves when data changes.
+</div>
+
+<div class="toolbar">
+  <button id="drop">▼ Simulate quota drop</button>
+</div>
+
+<div id="rows"></div>
+
+<div class="foot">
+  Colors shown: success blue / warning orange / error red from your theme. In the real sidebar the fill color
+  follows your live quota bucket; under 30% left the alarm pulse replaces the idle animation.<br><br>
+  Tell me which number(s) you approve (“ship #3”) and I’ll port it into the plugin as the new Ember-Frontier
+  replacement — same patch system, fully tested, one restart.
+</div>
+
+<script>
+"use strict";
+
+/* ---------- shared utilities (mirrors the TUI patch math) ---------- */
+
+const CELLS = 21;         // real sidebar bar width after the card + width patch
+const TICK_MS = 120;      // real TUI clock
+const BG = "#1d1a16";
+const MUTED = "#5c554d";
+
+function hexToRgb(hex) {
+  const m = hex.trim().match(/^#?([0-9a-f]{3}|[0-9a-f]{6})$/i);
+  if (!m) return null;
+  let h = m[1];
+  if (h.length === 3) h = h[0]+h[0]+h[1]+h[1]+h[2]+h[2];
+  return [parseInt(h.slice(0,2),16), parseInt(h.slice(2,4),16), parseInt(h.slice(4,6),16)];
+}
+function mix(a, b, t) {
+  const x = hexToRgb(a), y = hexToRgb(b);
+  if (!x || !y) return a;
+  const c = x.map((v,i) => Math.max(0, Math.min(255, Math.round(v + (y[i]-v)*t))));
+  return "#" + c.map(v => v.toString(16).padStart(2,"0")).join("");
+}
+function quant(hex, s = 8) {
+  const x = hexToRgb(hex);
+  if (!x) return hex;
+  const c = x.map(v => Math.max(0, Math.min(255, Math.round(v/s)*s)));
+  return "#" + c.map(v => v.toString(16).padStart(2,"0")).join("");
+}
+function rnd(a, b) { return a + Math.random() * (b - a); }
+function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
+
+// shared frontier glow on the leading one or two cells (same as the installed patch)
+function frontierGlow(filled, x, tick, seed) {
+  const d = filled - 1 - x;
+  if (d < 0 || d > 1) return 0;
+  const strength = d === 0 ? 1 : 0.45;
+  const flicker =
+    0.5 +
+    0.3 * Math.sin(tick * 0.75 + seed) * Math.sin(tick * 1.9 + x * 0.6) +
+    0.2 * Math.sin(tick * 0.31 + x * 0.5 + seed);
+  return strength * (0.08 + 0.10 * clamp(flicker, 0, 1));
+}
+
+/* ---------- bars ---------- */
+
+const BLUE = "#7aa5f8", ORANGE = "#f08a3c", RED = "#e05a5a";
+
+const bars = [
+  { n: 1, name: "Aurora Drift",      pct: 99, base: BLUE,   variant: "aurora",
+    vibe: "Hypnotic, calm, high-end. Light curtains flow through the fill like northern lights over glass — color only, glyphs stay solid █." },
+  { n: 2, name: "Firefly Stream",    pct: 44, base: ORANGE, variant: "fireflies",
+    vibe: "Addictive, alive. Tiny warm fireflies drift toward the frontier and fade — randomized spawns so it never loops on a metronome." },
+  { n: 3, name: "Comet Sweep",       pct: 72, base: BLUE,   variant: "comet",
+    vibe: "Dramatic, premium. A white-hot comet with a long fading tail whooshes left → tip every few seconds, then dissolves in a tip flash." },
+  { n: 4, name: "Heartbeat Cascade", pct: 81, base: BLUE,   variant: "heartbeat",
+    vibe: "Rhythmic and musical. Every beat, a soft crescent rolls toward the frontier and lands in a gentle flash — like energy feeding the quota." },
+  { n: 5, name: "Ion Storm",         pct: 12, base: RED,    variant: "ion",
+    vibe: "Calm glass with rare drama. Mostly still, then an electric flicker crackles through the fill for a second — then silence again. (Alarm pulse active here: under 30% left.)" },
+];
+
+for (const bar of bars) {
+  bar.filled = Math.round((bar.pct / 100) * CELLS);
+  bar.ghost = bar.filled;
+  bar.flash = null;
+  bar.seed = Math.random() * 6.28;
+  bar.state = variantState(bar.variant);
+}
+
+/* ---------- variant engines ---------- */
+
+function variantState(kind) {
+  if (kind === "fireflies") return { particles: [], nextSpawn: 8 };
+  if (kind === "comet") return { active: false, pos: 0, speed: 0, nextIn: 15 };
+  if (kind === "ion") return { nextIn: 40, active: 0, echoes: [] };
+  return {};
+}
+
+function variantStep(bar, tick) {
+  const s = bar.state, kind = bar.variant;
+
+  if (kind === "fireflies") {
+    if (tick >= s.nextSpawn && s.particles.length < 4 && bar.filled > 3) {
+      s.particles.push({
+        x: rnd(1, Math.max(2, bar.filled * 0.8)),
+        v: rnd(0.12, 0.3),
+        age: 0,
+        life: rnd(20, 42),
+      });
+      s.nextSpawn = tick + Math.round(rnd(6, 13));
+    }
+    for (const p of s.particles) { p.age++; p.x += p.v; }
+    s.particles = s.particles.filter(p => p.age < p.life && p.x < bar.filled + 2.5);
+  }
+
+  if (kind === "comet") {
+    if (!s.active) {
+      if (tick >= s.nextIn) {
+        s.active = true;
+        s.pos = -2;
+        s.speed = rnd(0.65, 0.95);
+      }
+    } else {
+      s.pos += s.speed;
+      if (s.pos > bar.filled + 1.5) {
+        s.active = false;
+        s.landedAt = tick;
+        s.nextIn = tick + Math.round(rnd(16, 46));
+      }
+    }
+  }
+
+  if (kind === "ion") {
+    if (s.active > 0) {
+      s.active--;
+      if (s.active === 0) s.echoes = [tick + 3, tick + 7];
+    } else if (tick >= s.nextIn && bar.filled > 3) {
+      s.active = Math.round(rnd(7, 13));
+      s.nextIn = tick + s.active + Math.round(rnd(45, 105));
+    }
+    s.echoes = s.echoes.filter(t => t >= tick);
+  }
+}
+
+// base fill tint per cell (before overrides)
+function fillTint(bar, x, tick) {
+  const kind = bar.variant, pct = bar.pct;
+
+  // below 30%: the shared alarm pulse (same as the installed patch)
+  if (pct < 30) {
+    const severity = clamp((30 - pct) / 30, 0, 1);
+    const amount = 0.1 + severity * 0.35;
+    const rate = 0.25 + severity * 0.3;
+    return quant(mix(bar.base, "#FFFFFF", amount * (0.5 + 0.5 * Math.sin(tick * rate))));
+  }
+
+  let c = bar.base;
+
+  if (kind === "aurora") {
+    const w1 = Math.sin(x * 0.42 - tick * 0.075);
+    const w2 = Math.sin(x * 0.23 + tick * 0.052 + 2.1);
+    const w3 = Math.sin(x * 0.31 - tick * 0.061 + 4.0);
+    const bright = clamp(0.5 + 0.25 * w1 + 0.25 * w2, 0, 1);
+    const trough = clamp(0.5 + 0.25 * w3 + 0.25 * Math.sin(x * 0.17 + tick * 0.043), 0, 1);
+    c = mix(c, "#FFFFFF", 0.22 * bright);
+    c = mix(c, BG, 0.14 * trough);
+  } else if (kind === "heartbeat") {
+    const P = 17;
+    const phase = (tick % P) / P;
+    const pulse = 0.5 - 0.5 * Math.cos(2 * Math.PI * phase);
+    c = mix(c, "#FFFFFF", 0.05 + 0.08 * Math.pow(pulse, 1.6));
+  } else if (kind === "ion") {
+    c = mix(c, "#FFFFFF", 0.03 * (0.5 + 0.5 * Math.sin(x * 0.35 - tick * 0.05)));
+  }
+  // subtle static caustic whisper for variants without their own base motion
+  else {
+    c = mix(c, "#FFFFFF", 0.04 * (0.5 + 0.25 * Math.sin(x * 0.42 - tick * 0.075) + 0.25 * Math.sin(x * 0.23 + tick * 0.052 + 2.1)));
+  }
+
+  const glow = frontierGlow(bar.filled, x, tick, bar.seed);
+  if (glow > 0.004 && pct >= 30) c = mix(c, "#FFFFFF", glow);
+  return quant(c);
+}
+
+// per-cell overrides (particles / comet / storm) -> { glyph, color, prio } or null
+function variantOverride(bar, x, tick) {
+  const kind = bar.variant, s = bar.state;
+  if (bar.pct < 30) return null; // alarm owns the bar
+
+  if (kind === "fireflies") {
+    let v = 0;
+    for (const p of s.particles) {
+      const env = Math.sin(Math.PI * clamp(p.age / p.life, 0, 1));
+      const d = Math.abs(x - p.x);
+      if (d <= 1.6) v += Math.max(0, 1 - d * 0.62) * env * 0.85;
+    }
+    if (v > 0.05) return { glyph: v > 0.6 ? "█" : "▓", color: quant(mix(bar.base, "#fff6d8", clamp(v, 0, 0.92))) };
+    return null;
+  }
+
+  if (kind === "comet") {
+    if (!s.active && (!s.landedAt || tick - s.landedAt > 4)) return null;
+    let v = 0;
+    if (s.active) {
+      const dh = x - s.pos;
+      v += Math.exp(-(dh * dh) / (2 * 1.0 * 1.0)) * 0.95;            // head
+      const behind = s.pos - x;                                       // continuous tail
+      if (behind > 0 && behind < 10) v += Math.exp(-behind / 3.2) * 0.5;
+    }
+    if (!s.active && s.landedAt) {                                    // landing flash at the tip
+      const t = (tick - s.landedAt) / 4;
+      const d = Math.abs(x - (bar.filled - 1));
+      if (d <= 2) v += (1 - t) * 0.55;
+    }
+    if (v > 0.04) return { glyph: v > 0.85 ? "█" : v > 0.35 ? "▓" : "▒", color: quant(mix(bar.base, "#ffffff", clamp(v * 0.95, 0, 0.95))) };
+    return null;
+  }
+
+  if (kind === "heartbeat") {
+    const P = 17;
+    const phase = (tick % P) / P;
+    let v = 0;
+    if (phase < 0.55) {
+      const prog = phase / 0.55;
+      const p = -2 + prog * (bar.filled + 4);
+      const amp = Math.sin(Math.PI * prog) * 0.45;
+      const d = x - p;
+      v += amp * Math.exp(-(d * d) / (2 * 2.2 * 2.2));
+    } else if (phase < 0.78) {
+      const fp = (phase - 0.55) / 0.23;
+      const d = Math.abs(x - (bar.filled - 1));
+      if (d <= 1.5) v += (1 - fp) * 0.5;
+    }
+    if (v > 0.05) return { glyph: "█", color: quant(mix(bar.base, "#ffffff", clamp(v * 0.8, 0, 0.85))) };
+    return null;
+  }
+
+  if (kind === "ion") {
+    let v = 0;
+    if (s.active > 0) {
+      const n = 2 + (tick % 4);
+      for (let i = 0; i <= n; i++) {
+        const jitter = Math.abs(Math.sin((tick * 7.31 + i * 13.7) % 6.28));
+        const cx = Math.floor(jitter * Math.max(1, bar.filled - 1));
+        const d = Math.abs(x - cx);
+        if (d === 0) v += 0.35 + 0.4 * Math.abs(Math.sin(tick * 3.1 + i));
+      }
+      if (bar.filled > 4) {
+        const arcStart = Math.floor(Math.abs(Math.sin(tick * 2.71)) * (bar.filled - 5));
+        const arcLen = 4 + Math.floor(Math.abs(Math.sin(tick * 1.93)) * 5);
+        if (x >= arcStart && x < arcStart + arcLen) v += 0.28;
+      }
+    }
+    for (const t of s.echoes) {
+      if (t === tick) {
+        const cx = Math.floor(Math.abs(Math.sin(tick * 4.7)) * Math.max(1, bar.filled - 1));
+        if (Math.abs(x - cx) <= 1) v += 0.5;
+      }
+    }
+    if (v > 0.05) return { glyph: v > 0.45 ? "█" : "▓", color: quant(mix(bar.base, "#dcecff", clamp(v, 0, 0.9))) };
+    return null;
+  }
+
+  return null;
+}
+
+/* ---------- shared drop / ghost / flash mechanics (as installed) ---------- */
+
+function renderCells(bar, tick, useFrontierOnly) {
+  const cells = [];
+  const ghostEnd = Math.ceil(bar.ghost);
+  const flash = bar.flash;
+  const flashI = flash ? Math.max(0, 1 - (tick - flash.start) / 6) : 0;
+
+  const ghostColor = mix(bar.base, BG, 0.55);
+
+  for (let x = 0; x < CELLS; x++) {
+    let glyph = "░", color = MUTED;
+
+    if (x < bar.filled) {
+      glyph = "█";
+      color = fillTint(bar, x, tick);
+    } else if (flash && flashI > 0 && x >= flash.from && x < flash.to) {
+      glyph = "█";
+      color = quant(mix(bar.base, "#FFFFFF", 0.2 + 0.6 * flashI));
+    } else if (x < ghostEnd) {
+      glyph = "▒";
+      color = quant(ghostColor);
+    }
+
+    const ov = variantOverride(bar, x, tick);
+    if (ov) { glyph = ov.glyph; color = ov.color; }
+
+    cells.push({ glyph, color });
+  }
+  return cells;
+}
+
+function stepShared(bar, tick) {
+  if (bar.ghost > bar.filled) {
+    bar.ghost -= (bar.ghost - bar.filled) * 0.03;
+    if (bar.ghost - bar.filled < 0.05) bar.ghost = bar.filled;
+  }
+  if (bar.flash && tick - bar.flash.start > 6) bar.flash = null;
+}
+
+/* ---------- DOM ---------- */
+
+const rowsEl = document.getElementById("rows");
+const rowEls = [];
+
+for (const bar of bars) {
+  const card = document.createElement("div");
+  card.className = "card";
+  card.innerHTML =
+    `<h2><span class="num">#${bar.n}</span>${bar.name}</h2>` +
+    `<div class="vibe">${bar.vibe}</div>` +
+    `<div class="barbox"></div>` +
+    `<div class="note"></div>`;
+  rowsEl.appendChild(card);
+  rowEls.push({
+    bar,
+    box: card.querySelector(".barbox"),
+    note: card.querySelector(".note"),
+  });
+}
+
+function renderBar(row, tick) {
+  const bar = row.bar;
+  const cells = renderCells(bar, tick);
+  const barHtml = cells.map(c => `<span style="color:${c.color}">${c.glyph}</span>`).join("");
+  const label = `${bar.pct}% left`;
+  const pad = label.padStart(9);
+  const m = pad.match(/^(\s*)(\d+%)(\s.*)$/);
+  const labelHtml = m
+    ? `<span class="lbl-l">${m[1]}</span><span style="color:${bar.base}">${m[2]}</span><span class="lbl-l">${m[3]}</span>`
+    : `<span class="lbl-l">${pad}</span>`;
+  row.box.innerHTML = barHtml + "  " + labelHtml;
+}
+
+document.getElementById("drop").addEventListener("click", () => {
+  for (const bar of bars) {
+    const prev = bar.filled;
+    bar.pct = Math.max(4, bar.pct - Math.round(rnd(10, 20)));
+    bar.filled = Math.round((bar.pct / 100) * CELLS);
+    if (bar.filled < prev) {
+      bar.flash = { from: bar.filled, to: prev, start: tick };
+      bar.ghost = Math.max(bar.ghost, prev);
+    }
+  }
+});
+
+let tick = 0;
+setInterval(() => {
+  tick++;
+  for (const row of rowEls) {
+    variantStep(row.bar, tick);
+    stepShared(row.bar, tick);
+    renderBar(row, tick);
+  }
+}, TICK_MS);
+
+// first paint
+for (const row of rowEls) renderBar(row, 0);
+</script>
+</body>
+</html>

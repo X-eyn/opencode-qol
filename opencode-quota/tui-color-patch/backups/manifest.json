@@ -1,0 +1,627 @@
+[
+  {
+    "target": "C:\\Users\\Admin\\.cache\\opencode\\npm\\@slkiser\\opencode-quota@latest\\1791861228488\\node_modules\\@slkiser\\opencode-quota\\dist\\tui.js",
+    "backup": "C:\\Users\\Admin\\.config\\opencode\\opencode-quota\\tui-color-patch\\backups\\2026-10-13T08-19-16-905Z__live-tui.js.orig",
+    "at": "2026-10-13T08-19-16-905Z",
+    "note": "pristine v5.0.2 tui.js before color patch"
+  },
+  {
+    "target": "C:\\Users\\Admin\\.cache\\opencode\\npm\\@slkiser\\opencode-quota@latest\\1791861228488\\node_modules\\@slkiser\\opencode-quota\\dist\\tui.js",
+    "backup": "C:\\Users\\Admin\\.config\\opencode\\opencode-quota\\tui-color-patch\\backups\\2026-10-14T09-04-07-702Z__C__Users_Admin_.cache_opencode_npm_@slkiser_opencode-quota@latest_1791861228488_node_modules_@slkiser_opencode-quota_dist_tui.js.orig",
+    "at": "2026-10-14T09-04-07-702Z",
+    "applied": [
+      "fire",
+      "frame"
+    ]
+  },
+  {
+    "target": "C:\\Users\\Admin\\.cache\\opencode\\npm\\@slkiser\\opencode-quota@latest\\1791861228488\\node_modules\\@slkiser\\opencode-quota\\dist\\tui.js",
+    "backup": "C:\\Users\\Admin\\.config\\opencode\\opencode-quota\\tui-color-patch\\backups\\2026-10-14T09-13-30-771Z__C__Users_Admin_.cache_opencode_npm_@slkiser_opencode-quota@latest_1791861228488_node_modules_@slkiser_opencode-quota_dist_tui.js.orig",
+    "at": "2026-10-14T09-13-30-771Z",
+    "applied": [
+      "fire"
+    ]
+  },
+  {
+    "target": "C:\\Users\\Admin\\.cache\\opencode\\npm\\@slkiser\\opencode-quota@latest\\1791861228488\\node_modules\\@slkiser\\opencode-quota\\dist\\tui.js",
+    "backup": "C:\\Users\\Admin\\.config\\opencode\\opencode-quota\\tui-color-patch\\backups\\2026-10-14T09-43-06-798Z__C__Users_Admin_.cache_opencode_npm_@slkiser_opencode-quota@latest_1791861228488_node_modules_@slkiser_opencode-quota_dist_tui.js.orig",
+    "at": "2026-10-14T09-43-06-798Z",
+    "applied": [
+      "fire"
+    ]
+  },
+  {
+    "target": "C:\\Users\\Admin\\.cache\\opencode\\npm\\@slkiser\\opencode-quota@latest\\1791861228488\\node_modules\\@slkiser\\opencode-quota\\dist\\tui.js",
+    "backup": "C:\\Users\\Admin\\.config\\opencode\\opencode-quota\\tui-color-patch\\backups\\2026-10-14T09-46-56-966Z__C__Users_Admin_.cache_opencode_npm_@slkiser_opencode-quota@latest_1791861228488_node_modules_@slkiser_opencode-quota_dist_tui.js.orig",
+    "at": "2026-10-14T09-46-56-966Z",
+    "applied": [
+      "fire"
+    ]
+  },
+  {
+    "target": "C:\\Users\\Admin\\.cache\\opencode\\npm\\@slkiser\\opencode-quota@latest\\1791861228488\\node_modules\\@slkiser\\opencode-quota\\dist\\tui.js",
+    "backup": "C:\\Users\\Admin\\.config\\opencode\\opencode-quota\\tui-color-patch\\backups\\2026-10-14T10-03-41-008Z__C__Users_Admin_.cache_opencode_npm_@slkiser_opencode-quota@latest_1791861228488_node_modules_@slkiser_opencode-quota_dist_tui.js.orig",
+    "at": "2026-10-14T10-03-41-008Z",
+    "applied": [
+      "fire"
+    ]
+  },
+  {
+    "target": "C:\\Users\\Admin\\.cache\\opencode\\npm\\@slkiser\\opencode-quota@latest\\1791861228488\\node_modules\\@slkiser\\opencode-quota\\dist\\tui.js",
+    "backup": "C:\\Users\\Admin\\.config\\opencode\\opencode-quota\\tui-color-patch\\backups\\2026-10-15T09-20-36-491Z__C__Users_Admin_.cache_opencode_npm_@slkiser_opencode-quota@latest_1791861228488_node_modules_@slkiser_opencode-quota_dist_tui.js.orig",
+    "at": "2026-10-15T09-20-36-491Z",
+    "applied": [
+      "fire"
+    ]
+  },
+  {
+    "target": "C:\\Users\\Admin\\.cache\\opencode\\npm\\@slkiser\\opencode-quota@latest\\1791861228488\\node_modules\\@slkiser\\opencode-quota\\dist\\tui.js",
+    "backup": "C:\\Users\\Admin\\.config\\opencode\\opencode-quota\\tui-color-patch\\backups\\2026-10-15T09-28-21-054Z__C__Users_Admin_.cache_opencode_npm_@slkiser_opencode-quota@latest_1791861228488_node_modules_@slkiser_opencode-quota_dist_tui.js.orig",
+    "at": "2026-10-15T09-28-21-054Z",
+    "applied": [
+      "fire"
+    ]
+  },
+  {
+    "target": "C:\\Users\\Admin\\.cache\\opencode\\npm\\@slkiser\\opencode-quota@latest\\1791861228488\\node_modules\\@slkiser\\opencode-quota\\dist\\tui.js",
+    "backup": "C:\\Users\\Admin\\.config\\opencode\\opencode-quota\\tui-color-patch\\backups\\2026-10-15T09-37-29-210Z__C__Users_Admin_.cache_opencode_npm_@slkiser_opencode-quota@latest_1791861228488_node_modules_@slkiser_opencode-quota_dist_tui.js.orig",
+    "at": "2026-10-15T09-37-29-210Z",
+    "applied": [
+      "fire"
+    ]
+  },
+  {
+    "target": "C:\\Users\\Admin\\.cache\\opencode\\npm\\@slkiser\\opencode-quota@latest\\1791861228488\\node_modules\\@slkiser\\opencode-quota\\dist\\tui.js",
+    "backup": "C:\\Users\\Admin\\.config\\opencode\\opencode-quota\\tui-color-patch\\backups\\2026-10-15T09-54-31-852Z__C__Users_Admin_.cache_opencode_npm_@slkiser_opencode-quota@latest_1791861228488_node_modules_@slkiser_opencode-quota_dist_tui.js.orig",
+    "at": "2026-10-15T09-54-31-852Z",
+    "applied": [
+      "fire"
+    ]
+  },
+  {
+    "target": "C:\\Users\\Admin\\.cache\\opencode\\npm\\@slkiser\\opencode-quota@latest\\1791861228488\\node_modules\\@slkiser\\opencode-quota\\dist\\tui.js",
+    "backup": "C:\\Users\\Admin\\.config\\opencode\\opencode-quota\\tui-color-patch\\backups\\2026-10-15T10-41-43-353Z__C__Users_Admin_.cache_opencode_npm_@slkiser_opencode-quota@latest_1791861228488_node_modules_@slkiser_opencode-quota_dist_tui.js.orig",
+    "at": "2026-10-15T10-41-43-353Z",
+    "applied": [
+      "border"
+    ]
+  },
+  {
+    "target": "C:\\Users\\Admin\\.cache\\opencode\\npm\\@slkiser\\opencode-quota@latest\\1791861228488\\node_modules\\@slkiser\\opencode-quota\\dist\\tui.js",
+    "backup": "C:\\Users\\Admin\\.config\\opencode\\opencode-quota\\tui-color-patch\\backups\\2026-10-15T10-52-45-159Z__C__Users_Admin_.cache_opencode_npm_@slkiser_opencode-quota@latest_1791861228488_node_modules_@slkiser_opencode-quota_dist_tui.js.orig",
+    "at": "2026-10-15T10-52-45-159Z",
+    "applied": [
+      "fire"
+    ]
+  },
+  {
+    "target": "C:\\Users\\Admin\\.cache\\opencode\\npm\\@slkiser\\opencode-quota@latest\\1791861228488\\node_modules\\@slkiser\\opencode-quota\\dist\\lib\\tui-sidebar-format.js",
+    "backup": "C:\\Users\\Admin\\.config\\opencode\\opencode-quota\\tui-color-patch\\backups\\2026-10-17T05-29-23-175Z__C__Users_Admin_.cache_opencode_npm_@slkiser_opencode-quota@latest_1791861228488_node_modules_@slkiser_opencode-quota_dist_lib_tui-sidebar-format.js.orig",
+    "at": "2026-10-17T05-29-23-175Z",
+    "applied": [
+      "width"
+    ]
+  },
+  {
+    "target": "C:\\Users\\Admin\\.cache\\opencode\\npm\\@slkiser\\opencode-quota@latest\\1791861228488\\node_modules\\@slkiser\\opencode-quota\\dist\\tui.js",
+    "backup": "C:\\Users\\Admin\\.config\\opencode\\opencode-quota\\tui-color-patch\\backups\\2026-10-17T08-15-14-371Z__C__Users_Admin_.cache_opencode_npm_@slkiser_opencode-quota@latest_1791861228488_node_modules_@slkiser_opencode-quota_dist_tui.js.orig",
+    "at": "2026-10-17T08-15-14-371Z",
+    "applied": [
+      "fire"
+    ]
+  },
+  {
+    "target": "C:\\Users\\Admin\\.cache\\opencode\\npm\\@slkiser\\opencode-quota@latest\\1791861228488\\node_modules\\@slkiser\\opencode-quota\\dist\\tui.js",
+    "backup": "C:\\Users\\Admin\\.config\\opencode\\opencode-quota\\tui-color-patch\\backups\\2026-10-17T08-15-39-465Z__C__Users_Admin_.cache_opencode_npm_@slkiser_opencode-quota@latest_1791861228488_node_modules_@slkiser_opencode-quota_dist_tui.js.orig",
+    "at": "2026-10-17T08-15-39-465Z",
+    "applied": [
+      "fire"
+    ]
+  },
+  {
+    "target": "C:\\Users\\Admin\\.cache\\opencode\\npm\\@slkiser\\opencode-quota@latest\\1791861228488\\node_modules\\@slkiser\\opencode-quota\\dist\\lib\\tui-sidebar-format.js",
+    "backup": "C:\\Users\\Admin\\.config\\opencode\\opencode-quota\\tui-color-patch\\backups\\2026-10-17T08-15-39-501Z__C__Users_Admin_.cache_opencode_npm_@slkiser_opencode-quota@latest_1791861228488_node_modules_@slkiser_opencode-quota_dist_lib_tui-sidebar-format.js.orig",
+    "at": "2026-10-17T08-15-39-501Z",
+    "applied": [
+      "width"
+    ]
+  },
+  {
+    "target": "C:\\Users\\Admin\\.cache\\opencode\\npm\\@slkiser\\opencode-quota@latest\\1791861228488\\node_modules\\@slkiser\\opencode-quota\\dist\\tui.js",
+    "backup": "C:\\Users\\Admin\\.config\\opencode\\opencode-quota\\tui-color-patch\\backups\\2026-10-17T08-18-07-968Z__C__Users_Admin_.cache_opencode_npm_@slkiser_opencode-quota@latest_1791861228488_node_modules_@slkiser_opencode-quota_dist_tui.js.orig",
+    "at": "2026-10-17T08-18-07-968Z",
+    "applied": [
+      "fire"
+    ]
+  },
+  {
+    "target": "C:\\Users\\Admin\\.cache\\opencode\\npm\\@slkiser\\opencode-quota@latest\\1791861228488\\node_modules\\@slkiser\\opencode-quota\\dist\\lib\\tui-sidebar-format.js",
+    "backup": "C:\\Users\\Admin\\.config\\opencode\\opencode-quota\\tui-color-patch\\backups\\2026-10-17T08-19-03-479Z__C__Users_Admin_.cache_opencode_npm_@slkiser_opencode-quota@latest_1791861228488_node_modules_@slkiser_opencode-quota_dist_lib_tui-sidebar-format.js.orig",
+    "at": "2026-10-17T08-19-03-479Z",
+    "applied": [
+      "width"
+    ]
+  },
+  {
+    "target": "C:\\Users\\Admin\\.cache\\opencode\\npm\\@slkiser\\opencode-quota@latest\\1791861228488\\node_modules\\@slkiser\\opencode-quota\\dist\\tui.js",
+    "backup": "C:\\Users\\Admin\\.config\\opencode\\opencode-quota\\tui-color-patch\\backups\\2026-10-17T08-41-01-992Z__C__Users_Admin_.cache_opencode_npm_@slkiser_opencode-quota@latest_1791861228488_node_modules_@slkiser_opencode-quota_dist_tui.js.orig",
+    "at": "2026-10-17T08-41-01-992Z",
+    "applied": [
+      "fire"
+    ]
+  },
+  {
+    "target": "C:\\Users\\Admin\\.cache\\opencode\\npm\\@slkiser\\opencode-quota@latest\\1791861228488\\node_modules\\@slkiser\\opencode-quota\\dist\\lib\\tui-sidebar-format.js",
+    "backup": "C:\\Users\\Admin\\.config\\opencode\\opencode-quota\\tui-color-patch\\backups\\2026-10-17T08-41-02-010Z__C__Users_Admin_.cache_opencode_npm_@slkiser_opencode-quota@latest_1791861228488_node_modules_@slkiser_opencode-quota_dist_lib_tui-sidebar-format.js.orig",
+    "at": "2026-10-17T08-41-02-010Z",
+    "applied": [
+      "width"
+    ]
+  },
+  {
+    "target": "C:\\Users\\Admin\\.cache\\opencode\\npm\\@slkiser\\opencode-quota@latest\\1791861228488\\node_modules\\@slkiser\\opencode-quota\\dist\\tui.js",
+    "backup": "C:\\Users\\Admin\\.config\\opencode\\opencode-quota\\tui-color-patch\\backups\\2026-10-17T08-48-26-957Z__C__Users_Admin_.cache_opencode_npm_@slkiser_opencode-quota@latest_1791861228488_node_modules_@slkiser_opencode-quota_dist_tui.js.orig",
+    "at": "2026-10-17T08-48-26-957Z",
+    "applied": [
+      "fire"
+    ]
+  },
+  {
+    "target": "C:\\Users\\Admin\\.cache\\opencode\\npm\\@slkiser\\opencode-quota@latest\\1791861228488\\node_modules\\@slkiser\\opencode-quota\\dist\\lib\\tui-sidebar-format.js",
+    "backup": "C:\\Users\\Admin\\.config\\opencode\\opencode-quota\\tui-color-patch\\backups\\2026-10-17T08-48-26-975Z__C__Users_Admin_.cache_opencode_npm_@slkiser_opencode-quota@latest_1791861228488_node_modules_@slkiser_opencode-quota_dist_lib_tui-sidebar-format.js.orig",
+    "at": "2026-10-17T08-48-26-975Z",
+    "applied": [
+      "width"
+    ]
+  },
+  {
+    "target": "C:\\Users\\Admin\\.cache\\opencode\\npm\\@slkiser\\opencode-quota@latest\\1791861228488\\node_modules\\@slkiser\\opencode-quota\\dist\\tui.js",
+    "backup": "C:\\Users\\Admin\\.config\\opencode\\opencode-quota\\tui-color-patch\\backups\\2026-10-17T08-54-23-415Z__C__Users_Admin_.cache_opencode_npm_@slkiser_opencode-quota@latest_1791861228488_node_modules_@slkiser_opencode-quota_dist_tui.js.orig",
+    "at": "2026-10-17T08-54-23-415Z",
+    "applied": [
+      "fire"
+    ]
+  },
+  {
+    "target": "C:\\Users\\Admin\\.cache\\opencode\\npm\\@slkiser\\opencode-quota@latest\\1791861228488\\node_modules\\@slkiser\\opencode-quota\\dist\\lib\\tui-sidebar-format.js",
+    "backup": "C:\\Users\\Admin\\.config\\opencode\\opencode-quota\\tui-color-patch\\backups\\2026-10-17T08-54-23-433Z__C__Users_Admin_.cache_opencode_npm_@slkiser_opencode-quota@latest_1791861228488_node_modules_@slkiser_opencode-quota_dist_lib_tui-sidebar-format.js.orig",
+    "at": "2026-10-17T08-54-23-433Z",
+    "applied": [
+      "width"
+    ]
+  },
+  {
+    "target": "C:\\Users\\Admin\\.cache\\opencode\\npm\\@slkiser\\opencode-quota@latest\\1791861228488\\node_modules\\@slkiser\\opencode-quota\\dist\\tui.js",
+    "backup": "C:\\Users\\Admin\\.config\\opencode\\opencode-quota\\tui-color-patch\\backups\\2026-10-17T09-01-09-843Z__C__Users_Admin_.cache_opencode_npm_@slkiser_opencode-quota@latest_1791861228488_node_modules_@slkiser_opencode-quota_dist_tui.js.orig",
+    "at": "2026-10-17T09-01-09-843Z",
+    "applied": [
+      "fire"
+    ]
+  },
+  {
+    "target": "C:\\Users\\Admin\\.cache\\opencode\\npm\\@slkiser\\opencode-quota@latest\\1791861228488\\node_modules\\@slkiser\\opencode-quota\\dist\\lib\\tui-sidebar-format.js",
+    "backup": "C:\\Users\\Admin\\.config\\opencode\\opencode-quota\\tui-color-patch\\backups\\2026-10-17T09-01-09-861Z__C__Users_Admin_.cache_opencode_npm_@slkiser_opencode-quota@latest_1791861228488_node_modules_@slkiser_opencode-quota_dist_lib_tui-sidebar-format.js.orig",
+    "at": "2026-10-17T09-01-09-861Z",
+    "applied": [
+      "width"
+    ]
+  },
+  {
+    "target": "C:\\Users\\Admin\\.cache\\opencode\\npm\\@slkiser\\opencode-quota@latest\\1791861228488\\node_modules\\@slkiser\\opencode-quota\\dist\\tui.js",
+    "backup": "C:\\Users\\Admin\\.config\\opencode\\opencode-quota\\tui-color-patch\\backups\\2026-10-17T09-03-28-329Z__C__Users_Admin_.cache_opencode_npm_@slkiser_opencode-quota@latest_1791861228488_node_modules_@slkiser_opencode-quota_dist_tui.js.orig",
+    "at": "2026-10-17T09-03-28-329Z",
+    "applied": [
+      "fire"
+    ]
+  },
+  {
+    "target": "C:\\Users\\Admin\\.cache\\opencode\\npm\\@slkiser\\opencode-quota@latest\\1791861228488\\node_modules\\@slkiser\\opencode-quota\\dist\\lib\\tui-sidebar-format.js",
+    "backup": "C:\\Users\\Admin\\.config\\opencode\\opencode-quota\\tui-color-patch\\backups\\2026-10-17T09-03-28-346Z__C__Users_Admin_.cache_opencode_npm_@slkiser_opencode-quota@latest_1791861228488_node_modules_@slkiser_opencode-quota_dist_lib_tui-sidebar-format.js.orig",
+    "at": "2026-10-17T09-03-28-346Z",
+    "applied": [
+      "width"
+    ]
+  },
+  {
+    "target": "C:/Users/Admin/AppData/Local/Temp/opencode/v12-repro/tui.js",
+    "backup": "C:\\Users\\Admin\\.config\\opencode\\opencode-quota\\tui-color-patch\\backups\\2026-10-17T09-28-05-186Z__C__Users_Admin_AppData_Local_Temp_opencode_v12-repro_tui.js.orig",
+    "at": "2026-10-17T09-28-05-186Z",
+    "applied": [
+      "colors",
+      "fire",
+      "frame",
+      "border"
+    ]
+  },
+  {
+    "target": "C:/Users/Admin/AppData/Local/Temp/opencode/v12-repro/tui.js",
+    "backup": "C:\\Users\\Admin\\.config\\opencode\\opencode-quota\\tui-color-patch\\backups\\2026-10-17T09-29-49-015Z__C__Users_Admin_AppData_Local_Temp_opencode_v12-repro_tui.js.orig",
+    "at": "2026-10-17T09-29-49-015Z",
+    "applied": [
+      "colors",
+      "fire",
+      "frame",
+      "border"
+    ]
+  },
+  {
+    "target": "C:/Users/Admin/AppData/Local/Temp/opencode/v12-repro/tui.js",
+    "backup": "C:\\Users\\Admin\\.config\\opencode\\opencode-quota\\tui-color-patch\\backups\\2026-10-17T09-29-56-202Z__C__Users_Admin_AppData_Local_Temp_opencode_v12-repro_tui.js.orig",
+    "at": "2026-10-17T09-29-56-202Z",
+    "applied": [
+      "colors",
+      "fire",
+      "frame",
+      "border"
+    ]
+  },
+  {
+    "target": "C:\\Users\\Admin\\.cache\\opencode\\npm\\@slkiser\\opencode-quota@latest\\1791861228488\\node_modules\\@slkiser\\opencode-quota\\dist\\tui.js",
+    "backup": "C:\\Users\\Admin\\.config\\opencode\\opencode-quota\\tui-color-patch\\backups\\2026-10-17T09-30-21-598Z__C__Users_Admin_.cache_opencode_npm_@slkiser_opencode-quota@latest_1791861228488_node_modules_@slkiser_opencode-quota_dist_tui.js.orig",
+    "at": "2026-10-17T09-30-21-598Z",
+    "applied": [
+      "fire"
+    ]
+  },
+  {
+    "target": "C:/Users/Admin/AppData/Local/Temp/opencode/v12-repro/tui.js",
+    "backup": "C:\\Users\\Admin\\.config\\opencode\\opencode-quota\\tui-color-patch\\backups\\2026-10-17T09-30-30-064Z__C__Users_Admin_AppData_Local_Temp_opencode_v12-repro_tui.js.orig",
+    "at": "2026-10-17T09-30-30-064Z",
+    "applied": [
+      "colors",
+      "fire",
+      "frame",
+      "border"
+    ]
+  },
+  {
+    "target": "C:/Users/Admin/AppData/Local/Temp/opencode/v13-repro/tui.js",
+    "backup": "C:\\Users\\Admin\\.config\\opencode\\opencode-quota\\tui-color-patch\\backups\\2026-10-17T09-36-02-173Z__C__Users_Admin_AppData_Local_Temp_opencode_v13-repro_tui.js.orig",
+    "at": "2026-10-17T09-36-02-173Z",
+    "applied": [
+      "colors",
+      "fire",
+      "frame",
+      "border"
+    ]
+  },
+  {
+    "target": "C:\\Users\\Admin\\.cache\\opencode\\npm\\@slkiser\\opencode-quota@latest\\1791861228488\\node_modules\\@slkiser\\opencode-quota\\dist\\tui.js",
+    "backup": "C:\\Users\\Admin\\.config\\opencode\\opencode-quota\\tui-color-patch\\backups\\2026-10-17T09-36-16-830Z__C__Users_Admin_.cache_opencode_npm_@slkiser_opencode-quota@latest_1791861228488_node_modules_@slkiser_opencode-quota_dist_tui.js.orig",
+    "at": "2026-10-17T09-36-16-830Z",
+    "applied": [
+      "fire"
+    ]
+  },
+  {
+    "target": "C:/Users/Admin/AppData/Local/Temp/opencode/v13-repro/tui.js",
+    "backup": "C:\\Users\\Admin\\.config\\opencode\\opencode-quota\\tui-color-patch\\backups\\2026-10-17T09-36-22-496Z__C__Users_Admin_AppData_Local_Temp_opencode_v13-repro_tui.js.orig",
+    "at": "2026-10-17T09-36-22-496Z",
+    "applied": [
+      "colors",
+      "fire",
+      "frame",
+      "border"
+    ]
+  },
+  {
+    "target": "C:/Users/Admin/AppData/Local/Temp/opencode/v14-repro/tui.js",
+    "backup": "C:\\Users\\Admin\\.config\\opencode\\opencode-quota\\tui-color-patch\\backups\\2026-10-17T09-44-33-680Z__C__Users_Admin_AppData_Local_Temp_opencode_v14-repro_tui.js.orig",
+    "at": "2026-10-17T09-44-33-680Z",
+    "applied": [
+      "colors",
+      "fire",
+      "frame",
+      "border"
+    ]
+  },
+  {
+    "target": "C:\\Users\\Admin\\.cache\\opencode\\npm\\@slkiser\\opencode-quota@latest\\1791861228488\\node_modules\\@slkiser\\opencode-quota\\dist\\tui.js",
+    "backup": "C:\\Users\\Admin\\.config\\opencode\\opencode-quota\\tui-color-patch\\backups\\2026-10-17T09-44-40-796Z__C__Users_Admin_.cache_opencode_npm_@slkiser_opencode-quota@latest_1791861228488_node_modules_@slkiser_opencode-quota_dist_tui.js.orig",
+    "at": "2026-10-17T09-44-40-796Z",
+    "applied": [
+      "fire"
+    ]
+  },
+  {
+    "target": "C:/Users/Admin/AppData/Local/Temp/opencode/v14-repro/tui.js",
+    "backup": "C:\\Users\\Admin\\.config\\opencode\\opencode-quota\\tui-color-patch\\backups\\2026-10-17T09-44-51-960Z__C__Users_Admin_AppData_Local_Temp_opencode_v14-repro_tui.js.orig",
+    "at": "2026-10-17T09-44-51-960Z",
+    "applied": [
+      "colors",
+      "fire",
+      "frame",
+      "border"
+    ]
+  },
+  {
+    "target": "C:/Users/Admin/AppData/Local/Temp/opencode/v15-repro/tui.js",
+    "backup": "C:\\Users\\Admin\\.config\\opencode\\opencode-quota\\tui-color-patch\\backups\\2026-10-17T09-52-42-811Z__C__Users_Admin_AppData_Local_Temp_opencode_v15-repro_tui.js.orig",
+    "at": "2026-10-17T09-52-42-811Z",
+    "applied": [
+      "colors",
+      "fire",
+      "frame",
+      "border"
+    ]
+  },
+  {
+    "target": "C:\\Users\\Admin\\.cache\\opencode\\npm\\@slkiser\\opencode-quota@latest\\1791861228488\\node_modules\\@slkiser\\opencode-quota\\dist\\tui.js",
+    "backup": "C:\\Users\\Admin\\.config\\opencode\\opencode-quota\\tui-color-patch\\backups\\2026-10-17T09-53-03-111Z__C__Users_Admin_.cache_opencode_npm_@slkiser_opencode-quota@latest_1791861228488_node_modules_@slkiser_opencode-quota_dist_tui.js.orig",
+    "at": "2026-10-17T09-53-03-111Z",
+    "applied": [
+      "fire"
+    ]
+  },
+  {
+    "target": "C:/Users/Admin/AppData/Local/Temp/opencode/v15-repro/tui.js",
+    "backup": "C:\\Users\\Admin\\.config\\opencode\\opencode-quota\\tui-color-patch\\backups\\2026-10-17T09-53-31-567Z__C__Users_Admin_AppData_Local_Temp_opencode_v15-repro_tui.js.orig",
+    "at": "2026-10-17T09-53-31-567Z",
+    "applied": [
+      "colors",
+      "fire",
+      "frame",
+      "border"
+    ]
+  },
+  {
+    "target": "C:/Users/Admin/AppData/Local/Temp/opencode/v16-repro/tui.js",
+    "backup": "C:\\Users\\Admin\\.config\\opencode\\opencode-quota\\tui-color-patch\\backups\\2026-10-17T10-23-40-793Z__C__Users_Admin_AppData_Local_Temp_opencode_v16-repro_tui.js.orig",
+    "at": "2026-10-17T10-23-40-793Z",
+    "applied": [
+      "colors",
+      "fire",
+      "frame",
+      "border"
+    ]
+  },
+  {
+    "target": "C:\\Users\\Admin\\.cache\\opencode\\npm\\@slkiser\\opencode-quota@latest\\1791861228488\\node_modules\\@slkiser\\opencode-quota\\dist\\tui.js",
+    "backup": "C:\\Users\\Admin\\.config\\opencode\\opencode-quota\\tui-color-patch\\backups\\2026-10-17T10-23-46-904Z__C__Users_Admin_.cache_opencode_npm_@slkiser_opencode-quota@latest_1791861228488_node_modules_@slkiser_opencode-quota_dist_tui.js.orig",
+    "at": "2026-10-17T10-23-46-904Z",
+    "applied": [
+      "fire"
+    ]
+  },
+  {
+    "target": "C:/Users/Admin/AppData/Local/Temp/opencode/v16-repro/tui.js",
+    "backup": "C:\\Users\\Admin\\.config\\opencode\\opencode-quota\\tui-color-patch\\backups\\2026-10-17T10-23-53-869Z__C__Users_Admin_AppData_Local_Temp_opencode_v16-repro_tui.js.orig",
+    "at": "2026-10-17T10-23-53-869Z",
+    "applied": [
+      "colors",
+      "fire",
+      "frame",
+      "border"
+    ]
+  },
+  {
+    "target": "C:/Users/Admin/AppData/Local/Temp/opencode/v17-repro/tui.js",
+    "backup": "C:\\Users\\Admin\\.config\\opencode\\opencode-quota\\tui-color-patch\\backups\\2026-10-17T10-35-31-163Z__C__Users_Admin_AppData_Local_Temp_opencode_v17-repro_tui.js.orig",
+    "at": "2026-10-17T10-35-31-163Z",
+    "applied": [
+      "colors",
+      "fire",
+      "frame",
+      "border"
+    ]
+  },
+  {
+    "target": "C:\\Users\\Admin\\.cache\\opencode\\npm\\@slkiser\\opencode-quota@latest\\1791861228488\\node_modules\\@slkiser\\opencode-quota\\dist\\tui.js",
+    "backup": "C:\\Users\\Admin\\.config\\opencode\\opencode-quota\\tui-color-patch\\backups\\2026-10-17T10-35-47-928Z__C__Users_Admin_.cache_opencode_npm_@slkiser_opencode-quota@latest_1791861228488_node_modules_@slkiser_opencode-quota_dist_tui.js.orig",
+    "at": "2026-10-17T10-35-47-928Z",
+    "applied": [
+      "fire"
+    ]
+  },
+  {
+    "target": "C:/Users/Admin/AppData/Local/Temp/opencode/v17-repro/tui.js",
+    "backup": "C:\\Users\\Admin\\.config\\opencode\\opencode-quota\\tui-color-patch\\backups\\2026-10-17T10-35-54-418Z__C__Users_Admin_AppData_Local_Temp_opencode_v17-repro_tui.js.orig",
+    "at": "2026-10-17T10-35-54-418Z",
+    "applied": [
+      "colors",
+      "fire",
+      "frame",
+      "border"
+    ]
+  },
+  {
+    "target": "C:/Users/Admin/AppData/Local/Temp/opencode/v17-repro/tui.js",
+    "backup": "C:\\Users\\Admin\\.config\\opencode\\opencode-quota\\tui-color-patch\\backups\\2026-10-17T10-42-32-625Z__C__Users_Admin_AppData_Local_Temp_opencode_v17-repro_tui.js.orig",
+    "at": "2026-10-17T10-42-32-625Z",
+    "applied": [
+      "colors",
+      "fire",
+      "frame",
+      "border"
+    ]
+  },
+  {
+    "target": "C:\\Users\\Admin\\.cache\\opencode\\npm\\@slkiser\\opencode-quota@latest\\1791861228488\\node_modules\\@slkiser\\opencode-quota\\dist\\tui.js",
+    "backup": "C:\\Users\\Admin\\.config\\opencode\\opencode-quota\\tui-color-patch\\backups\\2026-10-17T10-42-39-751Z__C__Users_Admin_.cache_opencode_npm_@slkiser_opencode-quota@latest_1791861228488_node_modules_@slkiser_opencode-quota_dist_tui.js.orig",
+    "at": "2026-10-17T10-42-39-751Z",
+    "applied": [
+      "fire"
+    ]
+  },
+  {
+    "target": "C:\\Users\\Admin\\.cache\\opencode\\npm\\@slkiser\\opencode-quota@latest\\1791861228488\\node_modules\\@slkiser\\opencode-quota\\dist\\lib\\tui-sidebar-format.js",
+    "backup": "C:\\Users\\Admin\\.config\\opencode\\opencode-quota\\tui-color-patch\\backups\\2026-10-17T10-42-39-765Z__C__Users_Admin_.cache_opencode_npm_@slkiser_opencode-quota@latest_1791861228488_node_modules_@slkiser_opencode-quota_dist_lib_tui-sidebar-format.js.orig",
+    "at": "2026-10-17T10-42-39-765Z",
+    "applied": [
+      "width"
+    ]
+  },
+  {
+    "target": "C:/Users/Admin/AppData/Local/Temp/opencode/v17-repro/tui.js",
+    "backup": "C:\\Users\\Admin\\.config\\opencode\\opencode-quota\\tui-color-patch\\backups\\2026-10-17T10-42-46-176Z__C__Users_Admin_AppData_Local_Temp_opencode_v17-repro_tui.js.orig",
+    "at": "2026-10-17T10-42-46-176Z",
+    "applied": [
+      "colors",
+      "fire",
+      "frame",
+      "border"
+    ]
+  },
+  {
+    "target": "C:/Users/Admin/AppData/Local/Temp/opencode/v16-repro/tui.js",
+    "backup": "C:\\Users\\Admin\\.config\\opencode\\opencode-quota\\tui-color-patch\\backups\\2026-10-17T10-52-49-230Z__C__Users_Admin_AppData_Local_Temp_opencode_v16-repro_tui.js.orig",
+    "at": "2026-10-17T10-52-49-230Z",
+    "applied": [
+      "colors",
+      "fire",
+      "frame",
+      "border"
+    ]
+  },
+  {
+    "target": "C:\\Users\\Admin\\.cache\\opencode\\npm\\@slkiser\\opencode-quota@latest\\1791861228488\\node_modules\\@slkiser\\opencode-quota\\dist\\tui.js",
+    "backup": "C:\\Users\\Admin\\.config\\opencode\\opencode-quota\\tui-color-patch\\backups\\2026-10-17T10-53-00-753Z__C__Users_Admin_.cache_opencode_npm_@slkiser_opencode-quota@latest_1791861228488_node_modules_@slkiser_opencode-quota_dist_tui.js.orig",
+    "at": "2026-10-17T10-53-00-753Z",
+    "applied": [
+      "fire"
+    ]
+  },
+  {
+    "target": "C:/Users/Admin/AppData/Local/Temp/opencode/v16-repro/tui.js",
+    "backup": "C:\\Users\\Admin\\.config\\opencode\\opencode-quota\\tui-color-patch\\backups\\2026-10-17T10-53-10-804Z__C__Users_Admin_AppData_Local_Temp_opencode_v16-repro_tui.js.orig",
+    "at": "2026-10-17T10-53-10-804Z",
+    "applied": [
+      "colors",
+      "fire",
+      "frame",
+      "border"
+    ]
+  },
+  {
+    "target": "C:\\Users\\Admin\\.cache\\opencode\\npm\\@slkiser\\opencode-quota@latest\\1791861228488\\node_modules\\@slkiser\\opencode-quota\\dist\\tui.js",
+    "backup": "C:\\Users\\Admin\\.config\\opencode\\opencode-quota\\tui-color-patch\\backups\\2026-10-18T08-24-37-581Z__C__Users_Admin_.cache_opencode_npm_@slkiser_opencode-quota@latest_1791861228488_node_modules_@slkiser_opencode-quota_dist_tui.js.orig",
+    "at": "2026-10-18T08-24-37-581Z",
+    "applied": [
+      "fire"
+    ]
+  },
+  {
+    "target": "C:\\Users\\Admin\\.cache\\opencode\\npm\\@slkiser\\opencode-quota@latest\\1791861228488\\node_modules\\@slkiser\\opencode-quota\\dist\\tui.js",
+    "backup": "C:\\Users\\Admin\\.config\\opencode\\opencode-quota\\tui-color-patch\\backups\\2026-10-18T08-25-29-167Z__C__Users_Admin_.cache_opencode_npm_@slkiser_opencode-quota@latest_1791861228488_node_modules_@slkiser_opencode-quota_dist_tui.js.orig",
+    "at": "2026-10-18T08-25-29-167Z",
+    "applied": [
+      "fire"
+    ]
+  },
+  {
+    "target": "C:\\Users\\Admin\\.cache\\opencode\\npm\\@slkiser\\opencode-quota@latest\\1791861228488\\node_modules\\@slkiser\\opencode-quota\\dist\\lib\\tui-sidebar-format.js",
+    "backup": "C:\\Users\\Admin\\.config\\opencode\\opencode-quota\\tui-color-patch\\backups\\2026-10-18T08-25-29-205Z__C__Users_Admin_.cache_opencode_npm_@slkiser_opencode-quota@latest_1791861228488_node_modules_@slkiser_opencode-quota_dist_lib_tui-sidebar-format.js.orig",
+    "at": "2026-10-18T08-25-29-205Z",
+    "applied": [
+      "width"
+    ]
+  },
+  {
+    "target": "C:\\Users\\Admin\\.cache\\opencode\\npm\\@slkiser\\opencode-quota@latest\\1791861228488\\node_modules\\@slkiser\\opencode-quota\\dist\\tui.js",
+    "backup": "C:\\Users\\Admin\\.config\\opencode\\opencode-quota\\tui-color-patch\\backups\\2026-10-18T08-29-10-150Z__C__Users_Admin_.cache_opencode_npm_@slkiser_opencode-quota@latest_1791861228488_node_modules_@slkiser_opencode-quota_dist_tui.js.orig",
+    "at": "2026-10-18T08-29-10-150Z",
+    "applied": [
+      "fire"
+    ]
+  },
+  {
+    "target": "C:\\Users\\Admin\\.cache\\opencode\\npm\\@slkiser\\opencode-quota@latest\\1791861228488\\node_modules\\@slkiser\\opencode-quota\\dist\\lib\\tui-sidebar-format.js",
+    "backup": "C:\\Users\\Admin\\.config\\opencode\\opencode-quota\\tui-color-patch\\backups\\2026-10-18T08-29-10-169Z__C__Users_Admin_.cache_opencode_npm_@slkiser_opencode-quota@latest_1791861228488_node_modules_@slkiser_opencode-quota_dist_lib_tui-sidebar-format.js.orig",
+    "at": "2026-10-18T08-29-10-169Z",
+    "applied": [
+      "width"
+    ]
+  },
+  {
+    "target": "C:\\Users\\Admin\\.cache\\opencode\\npm\\@slkiser\\opencode-quota@latest\\1791861228488\\node_modules\\@slkiser\\opencode-quota\\dist\\tui.js",
+    "backup": "C:\\Users\\Admin\\.config\\opencode\\opencode-quota\\tui-color-patch\\backups\\2026-10-18T08-29-26-148Z__C__Users_Admin_.cache_opencode_npm_@slkiser_opencode-quota@latest_1791861228488_node_modules_@slkiser_opencode-quota_dist_tui.js.orig",
+    "at": "2026-10-18T08-29-26-148Z",
+    "applied": [
+      "fire"
+    ]
+  },
+  {
+    "target": "C:\\Users\\Admin\\.cache\\opencode\\npm\\@slkiser\\opencode-quota@latest\\1791861228488\\node_modules\\@slkiser\\opencode-quota\\dist\\lib\\tui-sidebar-format.js",
+    "backup": "C:\\Users\\Admin\\.config\\opencode\\opencode-quota\\tui-color-patch\\backups\\2026-10-18T08-29-26-161Z__C__Users_Admin_.cache_opencode_npm_@slkiser_opencode-quota@latest_1791861228488_node_modules_@slkiser_opencode-quota_dist_lib_tui-sidebar-format.js.orig",
+    "at": "2026-10-18T08-29-26-161Z",
+    "applied": [
+      "width"
+    ]
+  },
+  {
+    "target": "C:\\Users\\Admin\\.cache\\opencode\\npm\\@slkiser\\opencode-quota@latest\\1791861228488\\node_modules\\@slkiser\\opencode-quota\\dist\\tui.js",
+    "backup": "C:\\Users\\Admin\\.config\\opencode\\opencode-quota\\tui-color-patch\\backups\\2026-10-18T10-29-32-838Z__C__Users_Admin_.cache_opencode_npm_@slkiser_opencode-quota@latest_1791861228488_node_modules_@slkiser_opencode-quota_dist_tui.js.orig",
+    "at": "2026-10-18T10-29-32-838Z",
+    "applied": [
+      "fire",
+      "border"
+    ]
+  },
+  {
+    "target": "C:\\Users\\Admin\\.cache\\opencode\\npm\\@slkiser\\opencode-quota@latest\\1791861228488\\node_modules\\@slkiser\\opencode-quota\\dist\\tui.js",
+    "backup": "C:\\Users\\Admin\\.config\\opencode\\opencode-quota\\tui-color-patch\\backups\\2026-10-18T10-29-51-507Z__C__Users_Admin_.cache_opencode_npm_@slkiser_opencode-quota@latest_1791861228488_node_modules_@slkiser_opencode-quota_dist_tui.js.orig",
+    "at": "2026-10-18T10-29-51-507Z",
+    "applied": [
+      "fire",
+      "border"
+    ]
+  },
+  {
+    "target": "C:\\Users\\Admin\\.cache\\opencode\\npm\\@slkiser\\opencode-quota@latest\\1791861228488\\node_modules\\@slkiser\\opencode-quota\\dist\\lib\\tui-sidebar-format.js",
+    "backup": "C:\\Users\\Admin\\.config\\opencode\\opencode-quota\\tui-color-patch\\backups\\2026-10-18T10-29-51-545Z__C__Users_Admin_.cache_opencode_npm_@slkiser_opencode-quota@latest_1791861228488_node_modules_@slkiser_opencode-quota_dist_lib_tui-sidebar-format.js.orig",
+    "at": "2026-10-18T10-29-51-545Z",
+    "applied": [
+      "width"
+    ]
+  },
+  {
+    "target": "C:\\Users\\Admin\\.cache\\opencode\\npm\\@slkiser\\opencode-quota@latest\\1791861228488\\node_modules\\@slkiser\\opencode-quota\\dist\\tui.js",
+    "backup": "C:\\Users\\Admin\\.config\\opencode\\opencode-quota\\tui-color-patch\\backups\\2026-10-18T10-37-12-022Z__C__Users_Admin_.cache_opencode_npm_@slkiser_opencode-quota@latest_1791861228488_node_modules_@slkiser_opencode-quota_dist_tui.js.orig",
+    "at": "2026-10-18T10-37-12-022Z",
+    "applied": [
+      "fire"
+    ]
+  },
+  {
+    "target": "C:\\Users\\Admin\\.cache\\opencode\\npm\\@slkiser\\opencode-quota@latest\\1791861228488\\node_modules\\@slkiser\\opencode-quota\\dist\\tui.js",
+    "backup": "C:\\Users\\Admin\\.config\\opencode\\opencode-quota\\tui-color-patch\\backups\\2026-10-18T10-37-12-863Z__C__Users_Admin_.cache_opencode_npm_@slkiser_opencode-quota@latest_1791861228488_node_modules_@slkiser_opencode-quota_dist_tui.js.orig",
+    "at": "2026-10-18T10-37-12-863Z",
+    "applied": [
+      "fire"
+    ]
+  },
+  {
+    "target": "C:\\Users\\Admin\\.cache\\opencode\\npm\\@slkiser\\opencode-quota@latest\\1791861228488\\node_modules\\@slkiser\\opencode-quota\\dist\\lib\\tui-sidebar-format.js",
+    "backup": "C:\\Users\\Admin\\.config\\opencode\\opencode-quota\\tui-color-patch\\backups\\2026-10-18T10-37-12-877Z__C__Users_Admin_.cache_opencode_npm_@slkiser_opencode-quota@latest_1791861228488_node_modules_@slkiser_opencode-quota_dist_lib_tui-sidebar-format.js.orig",
+    "at": "2026-10-18T10-37-12-877Z",
+    "applied": [
+      "width"
+    ]
+  },
+  {
+    "target": "C:\\Users\\Admin\\.cache\\opencode\\npm\\@slkiser\\opencode-quota@latest\\1791861228488\\node_modules\\@slkiser\\opencode-quota\\dist\\tui.js",
+    "backup": "C:\\Users\\Admin\\.config\\opencode\\opencode-quota\\tui-color-patch\\backups\\2026-10-18T10-44-18-740Z__C__Users_Admin_.cache_opencode_npm_@slkiser_opencode-quota@latest_1791861228488_node_modules_@slkiser_opencode-quota_dist_tui.js.orig",
+    "at": "2026-10-18T10-44-18-740Z",
+    "applied": [
+      "fire",
+      "border"
+    ]
+  },
+  {
+    "target": "C:\\Users\\Admin\\.cache\\opencode\\npm\\@slkiser\\opencode-quota@latest\\1791861228488\\node_modules\\@slkiser\\opencode-quota\\dist\\tui.js",
+    "backup": "C:\\Users\\Admin\\.config\\opencode\\opencode-quota\\tui-color-patch\\backups\\2026-10-18T10-44-19-574Z__C__Users_Admin_.cache_opencode_npm_@slkiser_opencode-quota@latest_1791861228488_node_modules_@slkiser_opencode-quota_dist_tui.js.orig",
+    "at": "2026-10-18T10-44-19-574Z",
+    "applied": [
+      "fire",
+      "border"
+    ]
+  },
+  {
+    "target": "C:\\Users\\Admin\\.cache\\opencode\\npm\\@slkiser\\opencode-quota@latest\\1791861228488\\node_modules\\@slkiser\\opencode-quota\\dist\\lib\\tui-sidebar-format.js",
+    "backup": "C:\\Users\\Admin\\.config\\opencode\\opencode-quota\\tui-color-patch\\backups\\2026-10-18T10-44-19-589Z__C__Users_Admin_.cache_opencode_npm_@slkiser_opencode-quota@latest_1791861228488_node_modules_@slkiser_opencode-quota_dist_lib_tui-sidebar-format.js.orig",
+    "at": "2026-10-18T10-44-19-589Z",
+    "applied": [
+      "width"
+    ]
+  }
+]

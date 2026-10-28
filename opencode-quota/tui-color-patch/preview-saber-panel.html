@@ -1,0 +1,292 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Quota Saber — Full Panel Preview</title>
+<style>
+  :root {
+    --bg: #0b0a09;
+    --panel: #121110;
+    --panel-edge: #332c24;
+    --text: #cfc6bb;
+    --muted: #8a7f74;
+    --dim: #5c554d;
+    --accent: #e8863c;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 28px 22px 60px;
+    background: var(--bg); color: var(--text);
+    font-family: "Cascadia Mono", "JetBrains Mono", Consolas, "Courier New", monospace;
+  }
+  h1 { font-size: 19px; margin: 0 0 6px; color: #efe7dc; }
+  .sub { color: var(--muted); font-size: 13px; margin-bottom: 18px; line-height: 1.7; max-width: 980px; }
+  .sub b { color: var(--accent); font-weight: 600; }
+  .toolbar { margin: 0 0 18px; display: flex; gap: 22px; align-items: center; flex-wrap: wrap; }
+  .ctl { display: flex; gap: 8px; align-items: center; color: var(--muted); font-size: 12.5px; }
+  .ctl input[type="range"] { width: 140px; accent-color: var(--accent); }
+  .ctl input[type="checkbox"] { accent-color: var(--accent); }
+  .ctl output { color: var(--text); min-width: 34px; text-align: right; }
+  button {
+    font: inherit; font-size: 13px;
+    background: #241f1a; color: var(--text);
+    border: 1px solid var(--panel-edge); border-radius: 6px;
+    padding: 7px 14px; cursor: pointer;
+  }
+  button:hover, button.on { border-color: var(--accent); color: #fff; }
+  .viewport {
+    border: 1px solid var(--panel-edge); border-radius: 12px;
+    background: #000; padding: 0; overflow: auto; max-width: 100%;
+    box-shadow: 0 0 80px rgba(122, 165, 248, 0.08);
+  }
+  canvas { display: block; image-rendering: pixelated; }
+  .caption {
+    margin-top: 14px; color: var(--muted); font-size: 13px; line-height: 1.7;
+    border-left: 2px solid var(--accent); padding-left: 12px;
+  }
+  .caption b { color: #d8d0c4; font-weight: 600; }
+  .foot { color: var(--dim); font-size: 12px; max-width: 980px; line-height: 1.7; margin-top: 26px; }
+</style>
+</head>
+<body>
+
+<h1>Quota Saber — full panel preview</h1>
+<div class="sub">
+  What the pixel-grid technique looks like with a real canvas: <b>152 × 40 = 6,080 pixels</b> — the size of an
+  OpenCode session panel (a documented feature: the plugin opens it full-screen with a keybind).<br>
+  Same constraints as the sidebar (quadrant blocks, two colors per cell), same <b>120 ms</b> clock — just
+  <b>~70× the canvas</b>. Blade length = your remaining quota.
+</div>
+
+<div class="toolbar">
+  <div class="ctl">Intensity <input id="intensity" type="range" min="0.5" max="2.5" step="0.25" value="1"><output id="ampVal">1×</output></div>
+  <div class="ctl">Speed <input id="speed" type="range" min="0.5" max="2.5" step="0.25" value="1"><output id="spdVal">1×</output></div>
+  <div class="ctl"><label><input id="slowmo" type="checkbox"> Slow-mo 0.25×</label></div>
+  <div class="ctl"><label><input id="zoom" type="checkbox"> Zoom 2×</label></div>
+  <button id="drop">▼ Simulate −15% quota</button>
+</div>
+
+<div class="viewport"><canvas id="scene"></canvas></div>
+
+<div class="caption" id="caption"></div>
+
+<div class="foot">
+  If this reads as the quality bar you want, the plan is: <b>sidebar keeps one quiet refined style</b> (the
+  kind that already earned a “yes nice”), and <b>this panel becomes the showpiece</b> — opened with a keybind,
+  e.g. <b>Ctrl+Q</b> → the blade ignites, retracts, sparks. Tell me yes and I’ll wire it into the plugin
+  (glyph test first, as always).
+</div>
+
+<script>
+"use strict";
+
+/* ---------- engine: true panel-size pixel canvas ---------- */
+
+const SW = 152, SH = 40;
+const DPR = 2;
+const TICK_MS = 120;
+const BG = "#0e0c0a";
+const BLADE = "#6fa4ff";
+const BLADE_LOW = "#ff6a5a";
+
+function hexToRgb(hex) {
+  const m = hex.trim().match(/^#?([0-9a-f]{3}|[0-9a-f]{6})$/i);
+  if (!m) return null;
+  let h = m[1];
+  if (h.length === 3) h = h[0]+h[0]+h[1]+h[1]+h[2]+h[2];
+  return [parseInt(h.slice(0,2),16), parseInt(h.slice(2,4),16), parseInt(h.slice(4,6),16)];
+}
+function mix(a, b, t2) {
+  const x = hexToRgb(a), y = hexToRgb(b);
+  if (!x || !y) return a;
+  const c = x.map((v,i) => Math.max(0, Math.min(255, Math.round(v + (y[i]-v)*t2))));
+  return "#" + c.map(v => v.toString(16).padStart(2,"0")).join("");
+}
+function scaleColor(hex, f) {
+  const x = hexToRgb(hex);
+  if (!x) return hex;
+  const c = x.map(v => Math.max(0, Math.min(255, Math.round(v * f))));
+  return "#" + c.map(v => v.toString(16).padStart(2,"0")).join("");
+}
+function rnd(a = 0, b = 1) { return a + Math.random() * (b - a); }
+function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
+
+/* ---------- state ---------- */
+
+const state = {
+  quota: 0.88,
+  len: 0.88,
+  sparks: [],
+  nextSpark: 20,
+};
+
+function step(t) {
+  state.len += (state.quota - state.len) * 0.09;   // eased retract / extend
+
+  if (t >= state.nextSpark && state.sparks.length < 7 && state.quota > 0.05) {
+    const bladeStart = 34, bladeEnd = 34 + (SW - 40) * state.len;
+    state.sparks.push({
+      x: rnd(bladeStart + 6, Math.max(bladeStart + 8, bladeEnd - 4)),
+      y: 20 + rnd(-4, 2),
+      vx: rnd(-0.15, 0.55),
+      vy: rnd(-0.45, -0.05),
+      age: 0,
+      life: rnd(14, 30),
+    });
+    state.nextSpark = t + rnd(14, 45);
+  }
+  for (const sp of state.sparks) {
+    sp.age++; sp.x += sp.vx; sp.y += sp.vy; sp.vy += 0.045;
+  }
+  state.sparks = state.sparks.filter(sp => sp.age < sp.life && sp.y < SH - 1);
+}
+
+function pixel(x, y, t, AMP) {
+  const cy = 20;
+  const low = state.quota < 0.3;
+  const bladeCol = low ? BLADE_LOW : BLADE;
+  const bladeStart = 34;
+  const bladeEnd = bladeStart + (SW - 40) * state.len;
+
+  // void background with vignette
+  const vx = (x / (SW - 1)) * 2 - 1, vy = (y / (SH - 1)) * 2 - 1;
+  const vig = 1 - 0.20 * Math.sqrt(vx * vx + vy * vy) / 1.414;
+  let c = scaleColor("#0f0d0b", vig);
+
+  // floor light spill under the blade
+  if (x >= bladeStart && x <= bladeEnd + 6 && y > cy + 6) {
+    const d = y - (cy + 6);
+    c = mix(c, bladeCol, clamp(0.14 * Math.exp(-d / 2.8), 0, 0.22));
+  }
+
+  // ---- hilt ----
+  if (x >= 8 && x <= 29 && Math.abs(y - cy) <= 5) {
+    const ry = (y - (cy - 5)) / 10;
+    let g = mix("#9a9a9a", "#2e2e2e", ry);
+    if (x % 3 === 0) g = mix(g, "#161616", 0.5);                 // grip ridges
+    if (x === 8) g = mix(g, "#0c0c0c", 0.55);                    // pommel
+    if (y === cy - 5 || y === cy + 5) g = mix(g, "#d8d8d8", 0.55);
+    if (x >= 12 && x <= 14 && y >= cy - 3 && y <= cy - 2) {
+      const pulse = 0.75 + 0.25 * Math.sin(t * 0.25);
+      g = mix("#4dff88", "#ffffff", 0.25 * pulse);               // power button
+    }
+    return g;
+  }
+  // ---- emitter shroud ----
+  if (x >= 30 && x <= 33 && Math.abs(y - cy) <= 6) {
+    const ry = (y - (cy - 6)) / 12;
+    let g = mix("#7c7c7c", "#242424", ry);
+    if (x === 30 || x === 33) g = mix(g, "#d0d0d0", 0.45);
+    return g;
+  }
+
+  // ---- emitter halo ----
+  {
+    const dxE = x - 33, dyE = y - cy;
+    const dE = Math.sqrt(dxE * dxE + dyE * dyE);
+    if (dE < 14) c = mix(c, bladeCol, clamp(0.30 * Math.exp(-dE / 4.2), 0, 0.35));
+  }
+
+  // ---- blade ----
+  if (x >= bladeStart - 1 && x <= bladeEnd) {
+    const dist = Math.abs(y - cy);
+    const tipP = clamp((x - (bladeEnd - 10)) / 10, 0, 1);
+    const maxDist = 6 * (1 - Math.pow(tipP, 2.4)) + 0.6;
+    if (dist <= maxDist) {
+      const d = dist / Math.max(0.6, maxDist);
+      const plasma =
+        1 +
+        0.05 * Math.sin(x * 0.22 - t * 0.6) +
+        0.035 * Math.sin(x * 0.09 + t * 0.37) +
+        0.02 * Math.sin(x * 0.6 + t * 1.1);
+      let col;
+      if (d < 0.26) col = "#ffffff";
+      else if (d < 0.42) col = mix(bladeCol, "#ffffff", 0.88);
+      else if (d < 0.60) col = mix(bladeCol, "#ffffff", 0.5);
+      else if (d < 0.78) col = bladeCol;
+      else if (d < 0.92) col = mix(bladeCol, BG, 0.35);
+      else col = mix(bladeCol, BG, 0.68);
+      col = scaleColor(col, clamp(plasma, 0.9, 1.14));
+      col = mix(col, "#ffffff", clamp(0.6 * Math.pow(tipP, 2.6), 0, 0.65)); // tip bloom
+      if (AMP !== 1) col = mix(mix(bladeCol, BG, 0.4), col, AMP);
+      return col;
+    }
+  }
+
+  // ---- sparks ----
+  for (const sp of state.sparks) {
+    const age = sp.age / sp.life;
+    const env = age < 0.25 ? age / 0.25 : 1 - (age - 0.25) / 0.75;
+    if (Math.round(sp.x) === x && Math.round(sp.y) === y) {
+      return mix(c, "#ffe9c0", clamp(0.95 * env, 0, 1));
+    }
+    if (Math.round(sp.x) - 1 === x && Math.round(sp.y) === y) {
+      c = mix(c, "#ffc478", clamp(0.30 * env, 0, 0.4));
+    }
+  }
+
+  return c;
+}
+
+/* ---------- sliders + DOM ---------- */
+
+const scene = document.getElementById("scene");
+const ctx = scene.getContext("2d");
+const intensityEl = document.getElementById("intensity");
+const speedEl = document.getElementById("speed");
+const slowmoEl = document.getElementById("slowmo");
+const zoomEl = document.getElementById("zoom");
+const ampValEl = document.getElementById("ampVal");
+const spdValEl = document.getElementById("spdVal");
+const captionEl = document.getElementById("caption");
+let AMP = 1, SPD = 1, UX = 5, UY = 9;
+
+function setZoom() {
+  const z = zoomEl.checked ? 2 : 1;
+  UX = 5 * z; UY = 9 * z;
+  scene.width = SW * UX * DPR;
+  scene.height = SH * UY * DPR;
+  scene.style.width = `${SW * UX}px`;
+  scene.style.height = `${SH * UY}px`;
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+}
+function readSliders() {
+  const a = parseFloat(intensityEl.value), sp = parseFloat(speedEl.value);
+  AMP = clamp(Number.isFinite(a) ? a : 1, 0.25, 4);
+  SPD = clamp(Number.isFinite(sp) ? sp : 1, 0.25, 4);
+  ampValEl.textContent = `${AMP}×`;
+  spdValEl.textContent = `${SPD}×`;
+}
+intensityEl.addEventListener("input", readSliders);
+speedEl.addEventListener("input", readSliders);
+zoomEl.addEventListener("change", setZoom);
+setZoom();
+readSliders();
+
+document.getElementById("drop").addEventListener("click", () => {
+  state.quota = Math.max(0.06, state.quota - 0.15);
+});
+
+let t = 0;
+function frame() {
+  t += (slowmoEl.checked ? 0.25 : 1) * SPD;
+  step(t);
+  for (let y = 0; y < SH; y++) {
+    for (let x = 0; x < SW; x++) {
+      ctx.fillStyle = pixel(x, y, t, AMP);
+      ctx.fillRect(x * UX, y * UY, UX, UY);
+    }
+  }
+  const pct = Math.round(state.quota * 100);
+  captionEl.innerHTML =
+    `<b>[OpenCode Go]</b> &nbsp;·&nbsp; 5h window &nbsp;·&nbsp; ` +
+    `<b style="color:${state.quota < 0.3 ? "#ff6a5a" : "#7aa5f8"}">${pct}% remaining</b> &nbsp;·&nbsp; ` +
+    `resets in ${2 + Math.floor(state.quota * 6)}h ${10 + Math.round(state.quota * 45)}m` +
+    (state.quota < 0.3 ? ` &nbsp;— <span style="color:#ff6a5a">blade unstable</span>` : "");
+}
+
+setInterval(frame, TICK_MS);
+frame();
+</script>
+</body>
+</html>

@@ -1,0 +1,659 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Seiche Lab — design 29 development</title>
+<style>
+  :root { --cw: 8.4px; --ch: 24px; --fs: 16px; --font: 'Cascadia Mono', Consolas, 'JetBrains Mono', monospace; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body { background: #101010; color: #cfcfcf; font-family: 'Segoe UI', system-ui, sans-serif; font-size: 13px; padding: 22px 22px 70px; }
+  h1 { font-size: 18px; margin: 0 0 6px; }
+  h1 b { color: #EC5B2B; }
+  .intro { color: #8b8b8b; font-size: 13px; line-height: 1.65; max-width: 1150px; margin-bottom: 6px; }
+  .intro b { color: #EC5B2B; }
+  .toolbar { margin: 14px 0 18px; color: #8b8b8b; font-size: 12.5px; display: flex; gap: 22px; align-items: center; flex-wrap: wrap; }
+  .toolbar input[type=range] { accent-color: #EC5B2B; vertical-align: middle; width: 180px; }
+  .toolbar b { color: #EC5B2B; font-weight: 600; }
+  .toolbar input[type=checkbox] { accent-color: #EC5B2B; }
+  .cards { display: flex; gap: 26px; flex-wrap: wrap; align-items: flex-start; }
+  .variant h3 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.07em; color: #EC5B2B; margin: 0 0 6px; }
+  .variant .note { color: #6f6f6f; font-size: 11.5px; margin: 0 0 8px; max-width: 430px; line-height: 1.5; }
+  .variant .note b { color: #9a9a9a; font-weight: 600; }
+  .cardOuter { padding: 16px 22px; background: #0a0a0a; border-radius: 6px; display: inline-block; }
+  .card { display: flex; flex-direction: column; }
+  .r { display: flex; }
+  .c { flex: 0 0 var(--cw); height: var(--ch); line-height: var(--ch); font-family: var(--font); font-size: var(--fs); white-space: pre; overflow: hidden; }
+  .c.b { font-weight: 700; }
+  .card.grid .c { box-shadow: inset 0 0 0 1px rgba(255,255,255,0.07); }
+</style>
+</head>
+<body>
+
+<h1>Seiche Lab — <b>design 29</b> development</h1>
+<p class="intro">
+  A dedicated lab for the wave-tank seiche. Twenty-three variants across four axes:
+  <b>physics logic</b> (rate, dispersion law, damping, mode count), <b>water shaders</b> (multi-stop depth gradients, glints, foam chroma),
+  <b>foam behaviour</b>, and <b>spent-space treatments</b> (what fills the used-up part of the bar — six abstract + two open beach scenes).
+  All cards run the real card layout and the real cell renderer.
+  Controls: <b>speed</b> = phase advance per frame; <b>frame</b> = redraw interval — the live sidebar runs <b>1.00× at 120ms</b> (defaults, as shipped).
+</p>
+<div class="toolbar">
+  <label><input id="speed" type="range" min="0.4" max="2.5" step="0.05" value="1"> speed <b id="speedVal">1.00×</b></label>
+  <label><input id="ms" type="range" min="40" max="240" step="10" value="120"> frame <b id="msVal">120ms</b></label>
+  <label><input id="grid" type="checkbox"> show pixel cells</label>
+</div>
+
+<div class="cards">
+  <section class="variant">
+    <h3>v1 · Baseline — current 29</h3>
+    <p class="note">The exact shipped seiche: 12 modes, deep-water dispersion (ω ∝ √n), 0.5× rate, foam at 0.8 with wake memory. The reference for everything else.</p>
+    <div class="cardOuter"><div class="card" id="cardBase"></div></div>
+  </section>
+  <section class="variant">
+    <h3>v2 · Slow heave — heavier water</h3>
+    <p class="note">Fundamental slowed to 0.34× with a longer wake: the same tank but the water feels massive — long, deliberate wall-to-wall heaves.</p>
+    <div class="cardOuter"><div class="card" id="cardSlow"></div></div>
+  </section>
+  <section class="variant">
+    <h3>v3 · Quick slosh — nudge a half-full tank</h3>
+    <p class="note">0.75× rate, shorter reverb, quicker foam decay. Snappier, more playful; the classic "someone bumped the table" slosh.</p>
+    <div class="cardOuter"><div class="card" id="cardQuick"></div></div>
+  </section>
+  <section class="variant">
+    <h3>v4 · Shallow tank — nondispersive</h3>
+    <p class="note">Shallow-water seiche theory: ω ∝ n instead of √n, so the modes stay in tighter phase — the surface moves as one cleaner travelling mass instead of dispersing into ripples. 8 modes.</p>
+    <div class="cardOuter"><div class="card" id="cardShallow"></div></div>
+  </section>
+  <section class="variant">
+    <h3>v5 · Damped + gusts — real energy budget</h3>
+    <p class="note">Friction bleeds the amplitude away, then gusts re-pump the tank. Watch the heave weaken to a simmer, then surge back to slamming whitecaps. Physically, this is what a real tank does.</p>
+    <div class="cardOuter"><div class="card" id="cardDamped"></div></div>
+  </section>
+  <section class="variant">
+    <h3>v6 · 16-mode surface — fine structure</h3>
+    <p class="note">Twelve modes become sixteen: finer frequencies fill in the surface, so crests and wakes carry detail at every scale. The "microscope" variant.</p>
+    <div class="cardOuter"><div class="card" id="cardFine"></div></div>
+  </section>
+  <section class="variant">
+    <h3>v7 · Moonlight — steel + silver glints</h3>
+    <p class="note">Cold steel-blue depth gradient; coherent silver glint bands travel the surface as light catches it. Glints are phase-locked across cells — never random twinkle.</p>
+    <div class="cardOuter"><div class="card" id="cardMoon"></div></div>
+  </section>
+  <section class="variant">
+    <h3>v8 · Lagoon — tropical turquoise</h3>
+    <p class="note">Bright turquoise shallows rising to mint; foam reads as white sand-froth. The warm-weather option.</p>
+    <div class="cardOuter"><div class="card" id="cardLagoon"></div></div>
+  </section>
+  <section class="variant">
+    <h3>v9 · Sunset — warm reflections</h3>
+    <p class="note">Indigo and violet water catching low warm light — a four-stop gradient ending in amber, with warm glints riding the swells.</p>
+    <div class="cardOuter"><div class="card" id="cardSunset"></div></div>
+  </section>
+  <section class="variant">
+    <h3>v10 · Arctic — glacier water</h3>
+    <p class="note">Pale glacier blues; crests read almost frosted. Quiet, cold, premium.</p>
+    <div class="cardOuter"><div class="card" id="cardArctic"></div></div>
+  </section>
+  <section class="variant">
+    <h3>v11 · Blackwater — electric edge</h3>
+    <p class="note">Near-black water where only the moving crest is lit — an electric teal edge that flickers over the top of the heave. Minimal, expensive-looking.</p>
+    <div class="cardOuter"><div class="card" id="cardBlack"></div></div>
+  </section>
+  <section class="variant">
+    <h3>v12 · Bioluminescent — plankton tide</h3>
+    <p class="note">Dark water lit from within by glowing plankton: the crest glows green-cyan and the foam sparkles like disturbed bioluminescence.</p>
+    <div class="cardOuter"><div class="card" id="cardBio"></div></div>
+  </section>
+  <section class="variant">
+    <h3>v13 · Storm steel — grey weather</h3>
+    <p class="note">Desaturated slate under a grey sky: the same physics, drained of colour. The moody one.</p>
+    <div class="cardOuter"><div class="card" id="cardSteel"></div></div>
+  </section>
+  <section class="variant">
+    <h3>v14 · The composite — everything on</h3>
+    <p class="note">16-mode surface + moonlight shader + glints + wake foam, all at once. If you want maximum simulation per cell, this is it.</p>
+    <div class="cardOuter"><div class="card" id="cardMix"></div></div>
+  </section>
+  <section class="variant">
+    <h3>v15 · Turquoise — baseline recolored</h3>
+    <p class="note">The exact baseline physics, recolored: same 12-mode seiche, same rate, same foam — a deep teal → turquoise → mint depth gradient instead of blue.</p>
+    <div class="cardOuter"><div class="card" id="cardTurq"></div></div>
+  </section>
+  <section class="variant">
+    <h3>v16 · Spent space — slots (reference)</h3>
+    <p class="note">The current treatment for the used-up part of the bar: faint `▁` slot dashes in the bucket-tinted floor color. Compare everything below against this.</p>
+    <div class="cardOuter"><div class="card" id="cardSpentSlots"></div></div>
+  </section>
+  <section class="variant">
+    <h3>v17 · Spent space — ebb tide</h3>
+    <p class="note">The sea doesn't stop at the edge: the exact same wave field continues into the spent zone, its amplitude decaying with distance until it flattens into a low calm line. One continuous body of water across the whole bar.</p>
+    <div class="cardOuter"><div class="card" id="cardEbb"></div></div>
+  </section>
+  <section class="variant">
+    <h3>v18 · Spent space — splash-over</h3>
+    <p class="note">The tank's right wall is the fill edge — so when a wave slams it, the ejecta now sprays OUTWARD into the spent zone: bright droplet specks walk past the waterline under the same ballistic deceleration, then dry up.</p>
+    <div class="cardOuter"><div class="card" id="cardOver"></div></div>
+  </section>
+  <section class="variant">
+    <h3>v19 · Spent space — ghost line</h3>
+    <p class="note">A pale eternal waterline: only the capillary ripples remain in the spent zone, travelling gently at a low height — the memory of water where the sea used to be.</p>
+    <div class="cardOuter"><div class="card" id="cardGhost"></div></div>
+  </section>
+  <section class="variant">
+    <h3>v20 · Spent space — dry bed</h3>
+    <p class="note">The spent zone reads as a drying seabed: a dither band right past the water, then a fine speckled bed, with rare slow glints like damp sand catching light.</p>
+    <div class="cardOuter"><div class="card" id="cardSand"></div></div>
+  </section>
+  <section class="variant">
+    <h3>v21 · Spent space — heat haze</h3>
+    <p class="note">Keep the slot dashes, but let them shimmer: a coherent travelling brightness wave rolls across the spent zone like heat haze over dry ground.</p>
+    <div class="cardOuter"><div class="card" id="cardHaze"></div></div>
+  </section>
+  <section class="variant">
+    <h3>v22 · Sandy shore — daytime beach</h3>
+    <p class="note">The spent zone becomes a beach: the shoreline gives way to a swash zone of wet sand that reaches up with every swell and slowly dries back, then a golden dune field — and a trail of footprints walking up out of the surf, drying and fading behind the walker.</p>
+    <div class="cardOuter"><div class="card" id="cardPalm"></div></div>
+  </section>
+  <section class="variant">
+    <h3>v23 · Surf &amp; wet sand — the swash zone</h3>
+    <p class="note">Same beach, more sea energy: spray flies over the shore, the wet band runs further up the sand after each boundary impact and slowly dries, and the footprints keep walking. The tide-line is real physics — it tracks the wave energy.</p>
+    <div class="cardOuter"><div class="card" id="cardSurf"></div></div>
+  </section>
+</div>
+
+<script>
+"use strict";
+const THEME = {
+  textBase: "#eeeeee", muted: "#808080", accent: "#EC5B2B",
+  success: "#6ba1e6", warning: "#EC5B2B", error: "#e06c75",
+  border: "#EC5B2B", pageBg: "#0a0a0a",
+};
+const DARK = "#0f0d0b";
+const SPEED = 2.25;
+const BAR_CELLS = 21;
+const EIGHTHS = ["\u2581", "\u2582", "\u2583", "\u2584", "\u2585", "\u2586", "\u2587", "\u2588"];
+
+function hexToInts(hex) { const h = hex.replace("#", ""); return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)]; }
+function intsToHex(ints) { return "#" + ints.map((v) => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, "0")).join(""); }
+function mix(a, b, t) { const x = hexToInts(a), y = hexToInts(b); return intsToHex(x.map((v, i) => v + (y[i] - v) * t)); }
+function scale(hex, f) { return intsToHex(hexToInts(hex).map((v) => v * f)); }
+function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
+function hash(n) { const s = Math.sin(n * 127.1 + 311.7) * 43758.5453; return s - Math.floor(s); }
+function bucketColor(pct, mode) {
+  const remaining = mode === "used" ? 100 - pct : pct;
+  return remaining < 30 ? THEME.error : remaining < 70 ? THEME.warning : THEME.success;
+}
+function slot(C) { return mix(THEME.pageBg, C, 0.24); }
+function grade(stops, t) {
+  if (t <= stops[0][0]) return stops[0][1];
+  for (let k = 1; k < stops.length; k++) {
+    if (t <= stops[k][0]) {
+      const a = stops[k - 1], b = stops[k];
+      const span = Math.max(1e-6, b[0] - a[0]);
+      return mix(a[1], b[1], (t - a[0]) / span);
+    }
+  }
+  return stops[stops.length - 1][1];
+}
+
+// ============================================================================
+// water shaders (multi-stop depth gradients) + foam chroma per palette
+// ============================================================================
+const PAL_BASE = [[0, "#0a2036"], [0.53, "#3ba0d6"], [1, "#97e4f9"]];
+const PAL_MOON = [[0, "#050d18"], [0.5, "#20395c"], [0.85, "#7fb3dd"], [1, "#eaf6ff"]];
+const PAL_LAGOON = [[0, "#03262a"], [0.45, "#0e7f86"], [0.8, "#2fd8c8"], [1, "#c8fff2"]];
+const PAL_SUNSET = [[0, "#150a2e"], [0.5, "#3a2a66"], [0.8, "#a04a8a"], [1, "#ffb46b"]];
+const PAL_ARCTIC = [[0, "#0a1d2e"], [0.5, "#3c6f96"], [0.85, "#cfe9f6"], [1, "#ffffff"]];
+const PAL_BLACK = [[0, "#020507"], [0.55, "#0a2530"], [0.85, "#16707a"], [1, "#8ff2e0"]];
+const PAL_BIO = [[0, "#01040a"], [0.5, "#04202c"], [0.82, "#0a7f8f"], [1, "#4dffd4"]];
+const PAL_STEEL = [[0, "#0b1016"], [0.55, "#2c3d4a"], [0.85, "#5d7a8a"], [1, "#c8d8e0"]];
+const PAL_TURQ = [[0, "#06272b"], [0.53, "#28b5ad"], [1, "#a0f0e4"]];
+
+const BASE_CFG = {
+  weight: null, modes: 12, shallow: false, w0: 0.26, tScale: 0.5, gain: 0.6,
+  foamAt: 0.8, spray: 0.12, lag: 12, damp: false,
+  pal: PAL_BASE, foamFg: "#eafcff", capBase: "#5fb3e0", capTop: "#ffffff",
+  glint: false, glintColor: "#ffffff",
+  riseMin: 0.11, riseMax: 0.32,
+  spent: "slots",
+};
+const W_SEICHE = (n) => (n === 1 ? 1.7 : n === 2 ? 0.8 : n === 3 ? 0.45 : n === 4 ? 0.35 : n <= 8 ? 0.2 : 0.1);
+const W_FINE = (n) => (n === 1 ? 1.7 : n === 2 ? 0.8 : n === 3 ? 0.45 : n === 4 ? 0.35 : n <= 8 ? 0.2 : n <= 12 ? 0.1 : 0.07);
+const TURQ_CFG = { weight: W_SEICHE, pal: PAL_TURQ, foamFg: "#e8fffb", capBase: "#5fc8bd", capTop: "#ffffff" };
+const BEACH_DAY = { sandDry: "#d9b878", sandWet: "#9a7748", glint: true };
+const BEACH_SURF = { sandDry: "#d4ad6a", sandWet: "#8a6a3e", glint: true };
+
+const V = {
+  base: Object.assign({}, BASE_CFG, { weight: W_SEICHE }),
+  slow: Object.assign({}, BASE_CFG, { weight: W_SEICHE, tScale: 0.34, gain: 0.65, lag: 16 }),
+  quick: Object.assign({}, BASE_CFG, { weight: W_SEICHE, tScale: 0.75, gain: 0.55, lag: 8, spray: 0.14 }),
+  shallow: Object.assign({}, BASE_CFG, { weight: W_SEICHE, modes: 8, shallow: true, riseMin: 0.075, riseMax: 0.19 }),
+  damped: Object.assign({}, BASE_CFG, { weight: W_SEICHE, damp: true }),
+  fine: Object.assign({}, BASE_CFG, { weight: W_FINE, modes: 16 }),
+  moon: Object.assign({}, BASE_CFG, { weight: W_SEICHE, pal: PAL_MOON, glint: true, glintColor: "#ffffff", foamFg: "#f4fbff", capBase: "#6f9fc8", capTop: "#ffffff" }),
+  lagoon: Object.assign({}, BASE_CFG, { weight: W_SEICHE, pal: PAL_LAGOON, foamFg: "#ffffff", capBase: "#7fe8d8", capTop: "#ffffff" }),
+  sunset: Object.assign({}, BASE_CFG, { weight: W_SEICHE, pal: PAL_SUNSET, glint: true, glintColor: "#ffd9a8", foamFg: "#ffeee0", capBase: "#d09a90", capTop: "#fff4e0" }),
+  arctic: Object.assign({}, BASE_CFG, { weight: W_SEICHE, pal: PAL_ARCTIC, foamFg: "#ffffff", capBase: "#a8d0e8", capTop: "#ffffff" }),
+  black: Object.assign({}, BASE_CFG, { weight: W_SEICHE, pal: PAL_BLACK, glint: true, glintColor: "#c8fff4", foamFg: "#bffeee", capBase: "#2a7f88", capTop: "#e8fff8" }),
+  bio: Object.assign({}, BASE_CFG, { weight: W_SEICHE, pal: PAL_BIO, glint: true, glintColor: "#a8ffe8", foamFg: "#d8fff0", capBase: "#1e7f6a", capTop: "#e8fff4", spray: 0.16 }),
+  steel: Object.assign({}, BASE_CFG, { weight: W_SEICHE, pal: PAL_STEEL, foamFg: "#e8f0f4", capBase: "#8a9aa5", capTop: "#f4f8fa" }),
+  mix: Object.assign({}, BASE_CFG, { weight: W_FINE, modes: 16, pal: PAL_MOON, glint: true, glintColor: "#ffffff", foamFg: "#f4fbff", capBase: "#6f9fc8", capTop: "#ffffff", spray: 0.13 }),
+  turq: Object.assign({}, BASE_CFG, { weight: W_SEICHE, pal: PAL_TURQ, foamFg: "#e8fffb", capBase: "#5fc8bd", capTop: "#ffffff" }),
+  spentSlots: Object.assign({}, BASE_CFG, TURQ_CFG, { spent: "slots" }),
+  ebb: Object.assign({}, BASE_CFG, TURQ_CFG, { spent: "ebb" }),
+  over: Object.assign({}, BASE_CFG, TURQ_CFG, { spent: "splash" }),
+  ghost: Object.assign({}, BASE_CFG, TURQ_CFG, { spent: "ghost" }),
+  sand: Object.assign({}, BASE_CFG, TURQ_CFG, { spent: "sand" }),
+  haze: Object.assign({}, BASE_CFG, TURQ_CFG, { spent: "haze" }),
+  palm: Object.assign({}, BASE_CFG, TURQ_CFG, { spent: "beach", beach: BEACH_DAY }),
+  surf: Object.assign({}, BASE_CFG, TURQ_CFG, { spent: "beach", beach: BEACH_SURF, spray: 0.16 }),
+};
+
+// ============================================================================
+// the tank: exact mode solution + deep/shallow dispersion + wake memory
+// ============================================================================
+function waterCell(h, hLag, i, x, T, cfg, spl) {
+  const h2 = clamp(h + spl.run + spl.cling + spl.rip, 0, 1);
+  const lvl = clamp(Math.round(2 + h2 * 6), 2, 8);
+  let fg = grade(cfg.pal, h2);
+  if (cfg.glint) {
+    const s = Math.sin(x * 3.1 - T * 0.3);
+    const gl = Math.pow(Math.max(0, s), 10) * clamp((h2 - 0.45) / 0.3, 0, 1) * 0.9;
+    if (gl > 0.01) fg = mix(fg, cfg.glintColor, gl);
+  }
+  const foamAt = cfg.foamAt - 0.22 * spl.foam;
+  const foamH = Math.max(h2, hLag * 0.96 + spl.foam * 0.25);
+  const foamI = clamp((foamH - foamAt) / 0.16, 0, 1) * clamp(h2 * 1.6, 0.3, 1);
+  if (foamI < 0.05 && spl.jet < 0.3 && spl.spray < 0.3) return { g: EIGHTHS[lvl - 1], fg };
+  const churn = Math.sin(T * 1.25 + i * 0.5) * 0.5 + Math.sin(T * 2.1 - i * 0.9) * 0.25;
+  fg = mix(fg, cfg.foamFg, clamp(foamI * 0.95 + churn * 0.1 + spl.spray * 0.3, 0, 1) * 0.85);
+  const cell = { g: EIGHTHS[lvl - 1], fg };
+  const cap = clamp(foamI * 1.15 + churn * 0.25 + spl.spray * 0.75 + spl.jet * 1.25, 0, 1) * clamp((h2 - 0.3) / 0.5, 0, 1);
+  if (cap > 0.04) {
+    let bg = mix(cfg.capBase, cfg.capTop, Math.pow(cap, 0.7));
+    const popChance = Math.min(0.85, cfg.spray * 0.5 + spl.jet * 0.4 + spl.spray * 0.25);
+    if (cap > 0.68 && popChance > 0 && hash(i * 5.3 + spl.seed * 7.9) > 1 - popChance) bg = "#ffffff";
+    else if (cfg.spray > 0 && cap > 0.8 && churn > 0.58) bg = "#ffffff";
+    cell.bg = bg;
+  }
+  return cell;
+}
+function tank(pct, phase, C, cfg) {
+  const T = phase * SPEED;
+  const filled = Math.round((pct / 100) * BAR_CELLS);
+  const W = Math.max(1, filled - 1);
+  const N = cfg.modes;
+  const A = [];
+  const P = [];
+  const om = [];
+  let sumsq = 0;
+  for (let n = 1; n <= N; n++) {
+    const a = cfg.weight(n) * (0.6 + 0.4 * hash(n * 3.77));
+    A.push(a);
+    P.push(hash(n * 9.13) * Math.PI * 2);
+    om.push(cfg.w0 * (cfg.shallow ? n * 0.36 : Math.sqrt(n)) * cfg.tScale);
+    sumsq += a * a;
+  }
+  const norm = Math.max(1e-6, Math.sqrt(sumsq / 2));
+  const energy = cfg.damp ? 0.42 + 0.58 * (0.5 - 0.5 * Math.cos(T * 0.035 + 1.2)) : 1;
+  const ripples = (t, x) =>
+    0.03 * Math.sin((x * 2.5 + t * 0.1) * Math.PI * 2) +
+    0.02 * Math.sin((x * 4.5 - t * 0.14) * Math.PI * 2);
+  const wallH = (t, side) => {
+    let u = 0;
+    for (let m = 0; m < N; m++) {
+      const n = m + 1;
+      const sp = side === 0 || n % 2 === 0 ? 1 : -1;
+      u += A[m] * sp * Math.cos(om[m] * t + P[m]);
+    }
+    const uu = (u / norm) * cfg.gain * energy;
+    return clamp(0.5 + (uu + 0.32 * uu * uu + ripples(t, side)) * 0.6, 0, 1);
+  };
+  const SCAN = 30;
+  const STEPT = 2;
+  const rateK = cfg.tScale / 0.5;
+  const riseMin = cfg.riseMin * rateK;
+  const riseMax = cfg.riseMax * rateK;
+  const impactOf = (side) => {
+    let best = 0;
+    let bestAge = 0;
+    let hPrev = wallH(T, side);
+    for (let k = 0; k <= SCAN; k++) {
+      const age = k * STEPT;
+      const hNext = wallH(T - age - STEPT, side);
+      const rise = hPrev - hNext;
+      if (rise > best) { best = rise; bestAge = age; }
+      hPrev = hNext;
+    }
+    return { mag: clamp((best - riseMin) / (riseMax - riseMin), 0, 1), age: bestAge };
+  };
+  const impL = impactOf(0);
+  const impR = impactOf(1);
+  const trainPos = (age) => 0.4 + 0.22 * age - 0.0035 * age * age;
+  const seed = Math.floor(T * 0.5);
+  const cells = [];
+  for (let i = 0; i < BAR_CELLS; i++) {
+    if (i < filled) {
+      const x = i / W;
+      let uA = 0;
+      let uB = 0;
+      for (let m = 0; m < N; m++) {
+        const n = m + 1;
+        const base = Math.cos(Math.PI * n * x);
+        uA += A[m] * base * Math.cos(om[m] * T + P[m]);
+        uB += A[m] * base * Math.cos(om[m] * (T - cfg.lag) + P[m]);
+      }
+      const mk = (u) => {
+        let v = u + 0.32 * u * u;
+        v += ripples(T, x);
+        return clamp(0.5 + v * 0.6, 0, 1);
+      };
+      const h = mk((uA / norm) * cfg.gain * energy);
+      const hLag = mk((uB / norm) * cfg.gain * energy);
+      const dL = i;
+      const dR = W - i;
+      const xsL = trainPos(impL.age);
+      const xsR = trainPos(impR.age);
+      const gateL = clamp((impL.mag - 0.2) / 0.5, 0, 1);
+      const gateR = clamp((impR.mag - 0.2) / 0.5, 0, 1);
+      const sprayL = gateL * Math.exp(-impL.age / 16) * Math.exp(-((dL - xsL) * (dL - xsL)) / 2.42);
+      const sprayR = gateR * Math.exp(-impR.age / 16) * Math.exp(-((dR - xsR) * (dR - xsR)) / 2.42);
+      const spl = {
+        run: 0.16 * (impL.mag * Math.exp(-impL.age / 14) * Math.exp(-dL / 1.8) + impR.mag * Math.exp(-impR.age / 14) * Math.exp(-dR / 1.8)),
+        cling: 0.05 * (
+          (impL.age > 8 ? impL.mag * Math.exp(-(impL.age - 8) / 20) : 0) * Math.exp(-dL / 2.2) +
+          (impR.age > 8 ? impR.mag * Math.exp(-(impR.age - 8) / 20) : 0) * Math.exp(-dR / 2.2)
+        ),
+        foam: impL.mag * Math.exp(-impL.age / 20) * Math.exp(-dL / 1.5) + impR.mag * Math.exp(-impR.age / 20) * Math.exp(-dR / 1.5),
+        spray: sprayL + sprayR,
+        rip: (sprayL + sprayR) * 0.05 * Math.sin(dL * 2.2 - T * 1.1),
+        jet: impL.mag * Math.exp(-impL.age / 2.6) * Math.exp(-dL / 1.1) + impR.mag * Math.exp(-impR.age / 2.6) * Math.exp(-dR / 1.1),
+        seed,
+      };
+      cells.push(waterCell(h, hLag, i, x, T, cfg, spl));
+    } else {
+      const dOut = i - filled + 1;
+      if (cfg.spent === "ebb") {
+        const xS = i / W;
+        let uS = 0;
+        for (let m = 0; m < N; m++) {
+          const n = m + 1;
+          uS += A[m] * Math.cos(Math.PI * n * xS) * Math.cos(om[m] * T + P[m]);
+        }
+        const decay = Math.exp(-dOut / 2.6);
+        let v = (uS / norm) * cfg.gain;
+        v = v + 0.32 * v * v;
+        v += ripples(T, xS) * decay;
+        const hS = clamp(0.5 + v * 0.6 * decay - (1 - decay) * 0.4, 0, 1);
+        const lvl = clamp(Math.round(1 + hS * 7), 1, 8);
+        const fg = mix(slot(C), grade(cfg.pal, hS), 0.3 + 0.6 * decay);
+        cells.push({ g: EIGHTHS[lvl - 1], fg });
+      } else if (cfg.spent === "splash") {
+        const slotCol = slot(C);
+        let fg = slotCol;
+        let g = "\u2581";
+        if (impR.mag > 0.2) {
+          const xsEdge = filled - 1 + trainPos(impR.age);
+          const env = impR.mag * Math.exp(-impR.age / 14);
+          const k = Math.exp(-((i - xsEdge) * (i - xsEdge)) / 1.8);
+          const glow = env * k;
+          if (glow > 0.06) {
+            g = "\u00b7";
+            fg = mix(slotCol, "#c8fff4", Math.min(1, glow * 1.3));
+            if (glow > 0.5 && hash(i * 3.1 + seed * 7.7) > 0.6) fg = "#ffffff";
+          }
+        }
+        cells.push({ g, fg });
+      } else if (cfg.spent === "ghost") {
+        const xG = i / BAR_CELLS;
+        const v = 0.03 * Math.sin((xG * 2.5 + T * 0.1) * Math.PI * 2) + 0.02 * Math.sin((xG * 4.5 - T * 0.14) * Math.PI * 2);
+        const hG = clamp(0.14 + v * 1.2, 0.04, 0.35);
+        const lvl = clamp(Math.round(1 + hG * 7), 1, 8);
+        const shim = 0.5 + 0.5 * Math.sin(i * 0.9 - T * 0.35);
+        cells.push({ g: EIGHTHS[lvl - 1], fg: mix(slot(C), "#7fd8cf", 0.3 + 0.25 * shim) });
+      } else if (cfg.spent === "sand") {
+        const near = dOut <= 2;
+        let fg = mix(slot(C), "#9aa89f", near ? 0.3 : 0.18);
+        if (hash(i * 7.3 + Math.floor(T * 0.25) * 3.1) > 0.985) fg = mix(fg, "#e8f6f0", 0.7);
+        cells.push({ g: near ? "\u2591" : "\u00b7", fg });
+      } else if (cfg.spent === "haze") {
+        const sh = 0.5 + 0.5 * Math.sin(i * 0.7 - T * 0.45) * Math.sin(i * 0.23 + T * 0.18);
+        cells.push({ g: "\u2581", fg: mix(slot(C), "#5fc8bd", 0.08 + 0.32 * sh) });
+      } else if (cfg.spent === "beach") {
+        const B = cfg.beach;
+        const power = clamp(impR.mag * Math.exp(-impR.age / 40), 0, 1);
+        // Dune field: rises from the shore and undulates; the swash zone
+        // (wet band) extends with boundary wave energy and slowly dries.
+        let hD = 0.42 + 0.22 * Math.sin(i * 0.9 + 1.3) + 0.14 * Math.sin(i * 2.1 + 4.2) + 0.06 * Math.sin(i * 4.7 + T * 0.05);
+        hD *= 0.35 + 0.65 * Math.min(1, dOut / 3);
+        hD = clamp(hD, 0.12, 0.9);
+        const wetBand = 1.6 + 3.4 * power;
+        const wet = clamp((wetBand - dOut) / wetBand, 0, 1) * (0.3 + 0.7 * power);
+        let sandCol = mix(B.sandDry, B.sandWet, wet);
+        // Footprints: someone walks out of the surf into the dunes - a trail
+        // of pressed, dark-sand prints (each pressed into the dune line)
+        // that dries and fades as the walker moves on.
+        if (dOut >= 3 && dOut <= 11 && (dOut - 3) % 2 === 0) {
+          const age = Math.floor(T * 0.06) - (dOut - 3) / 2;
+          if (age >= 0 && age < 10) {
+            hD = clamp(hD - (0.1 - 0.06 * (age / 10)), 0.08, 0.9);
+            sandCol = scale(sandCol, 0.62 + 0.26 * (age / 10));
+          }
+        }
+        const lvl = clamp(Math.round(1 + hD * 7), 1, 8);
+        if (B.glint && hash(i * 7.3 + Math.floor(T * 0.25) * 3.1) > 0.985) sandCol = mix(sandCol, "#fff2d0", 0.7);
+        cells.push({ g: EIGHTHS[lvl - 1], fg: sandCol });
+      } else {
+        cells.push({ g: "\u2581", fg: slot(C) });
+      }
+    }
+  }
+  return cells;
+}
+function mkDesign(cfgKey) { return (pct, phase, C) => tank(pct, phase, C, V[cfgKey]); }
+const DESIGNS = {
+  base: mkDesign("base"), slow: mkDesign("slow"), quick: mkDesign("quick"), shallow: mkDesign("shallow"),
+  damped: mkDesign("damped"), fine: mkDesign("fine"), moon: mkDesign("moon"), lagoon: mkDesign("lagoon"),
+  sunset: mkDesign("sunset"), arctic: mkDesign("arctic"), black: mkDesign("black"), bio: mkDesign("bio"),
+  steel: mkDesign("steel"), mix: mkDesign("mix"), turq: mkDesign("turq"),
+  spentSlots: mkDesign("spentSlots"), ebb: mkDesign("ebb"), over: mkDesign("over"),
+  ghost: mkDesign("ghost"), sand: mkDesign("sand"), haze: mkDesign("haze"),
+  palm: mkDesign("palm"), surf: mkDesign("surf"),
+};
+
+// ============================================================================
+// card rendering (same cell-grid technique as the sidebar)
+// ============================================================================
+const CARD_W = 36, CONTENT_W = 32, CONTENT_X = 2;
+const WINDOWS = [
+  { name: "5h", percent: 95, mode: "left", time: "4h 11m" },
+  { name: "Weekly", percent: 37, mode: "left", time: "1d 15h 3m" },
+  { name: "Monthly", percent: 68, mode: "left", time: "24d 8h 9m" },
+];
+
+function padRight(s, n) { return s.length >= n ? s : s + " ".repeat(n - s.length); }
+function padLeft(s, n) { return s.length >= n ? s : " ".repeat(n - s.length) + s; }
+function classicNameTimeLine(name, time, maxWidth, sep, prefTime) {
+  if (!time) return name.slice(0, maxWidth);
+  let timeWidth = Math.max(time.length, prefTime);
+  const preferredNameWidth = maxWidth - sep.length - timeWidth;
+  if (name.length > preferredNameWidth && name.length + sep.length + time.length <= maxWidth) timeWidth = time.length;
+  const nameWidth = Math.max(1, maxWidth - sep.length - timeWidth);
+  return (padRight(name, nameWidth) + sep + padLeft(time, timeWidth)).slice(0, maxWidth);
+}
+
+function buildCard(design) {
+  const rows = [];
+  const mk = () => Array.from({ length: CARD_W }, () => ({ c: " " }));
+  const put = (row, textValue, at, style) => {
+    const chars = Array.from(textValue);
+    for (let i = 0; i < chars.length && at + i < CARD_W; i++) row[at + i] = { c: chars[i], ...style };
+  };
+  const putCells = (row, cells, at) => {
+    for (let i = 0; i < cells.length && at + i < CARD_W; i++) {
+      const cell = cells[i];
+      if (cell.g === " " && !cell.fg) continue;
+      row[at + i] = { c: cell.g, fg: cell.fg, bg: cell.bg };
+    }
+  };
+  const borderStyle = { fg: THEME.border };
+  const side = (row) => {
+    put(row, "\u2502", 0, borderStyle);
+    put(row, "\u2502", CARD_W - 1, borderStyle);
+    return row;
+  };
+
+  const top = mk();
+  put(top, "\u256D" + "\u2500".repeat(CARD_W - 2) + "\u256E", 0, borderStyle);
+  rows.push(top);
+  const head = mk();
+  put(head, "\u2502", 0, borderStyle);
+  put(head, "\u2502", CARD_W - 1, borderStyle);
+  put(head, "\u25BC Quota", CONTENT_X, { fg: THEME.textBase });
+  rows.push(head);
+  const group = mk();
+  put(group, "[OpenCode Go]", CONTENT_X, { fg: THEME.textBase, b: true });
+  rows.push(side(group));
+
+  for (const win of WINDOWS) {
+    const C = bucketColor(win.percent, win.mode);
+    const nameLine = classicNameTimeLine(win.name, win.time, CONTENT_W, "  ", 7);
+    const nameRow = mk();
+    const tailRe = /^(.*?)(\s+)((?:\d+(?:\.\d+)?[dhms]\s*)+)\s*$/u;
+    const tail = tailRe.exec(nameLine);
+    if (tail) {
+      if (tail[1]) put(nameRow, tail[1], CONTENT_X, { fg: THEME.muted });
+      put(nameRow, tail[2], CONTENT_X + tail[1].length, { fg: THEME.muted });
+      put(nameRow, tail[3].trimEnd(), CONTENT_X + tail[1].length + tail[2].length, { fg: THEME.accent });
+    } else {
+      put(nameRow, nameLine, CONTENT_X, { fg: THEME.muted });
+    }
+    rows.push(side(nameRow));
+
+    const barRow = mk();
+    putCells(barRow, DESIGNS[design](win.percent, phase, C), CONTENT_X);
+    const label = `${Math.round(win.percent)}% ${win.mode === "used" ? "used" : "left"}`.padStart(9);
+    const parts = label.match(/^(\s*)(\d+%)(\s.*)?$/u);
+    const labelX = CONTENT_X + BAR_CELLS + 2;
+    if (parts) {
+      if (parts[1]) put(barRow, parts[1], labelX, { fg: THEME.muted });
+      put(barRow, parts[2], labelX + (parts[1] || "").length, { fg: C });
+      if (parts[3]) put(barRow, parts[3], labelX + (parts[1] || "").length + parts[2].length, { fg: THEME.muted });
+    } else {
+      put(barRow, label, labelX, { fg: THEME.muted });
+    }
+    rows.push(side(barRow));
+  }
+
+  const heading = mk();
+  put(heading, "Session input/output tokens", CONTENT_X, { fg: THEME.textBase });
+  rows.push(side(heading));
+  const model = mk();
+  put(model, "  claude-sonnet-4-20250514", CONTENT_X, { fg: THEME.muted });
+  rows.push(side(model));
+  const counts = mk();
+  put(counts, "    1.0M (200K) in  300K out", CONTENT_X, { fg: THEME.muted });
+  rows.push(side(counts));
+
+  const bottom = mk();
+  put(bottom, "\u2570" + "\u2500".repeat(CARD_W - 2) + "\u256F", 0, borderStyle);
+  rows.push(bottom);
+  return rows;
+}
+
+let phase = 0;
+let phaseStep = 1;
+let cwMeasured = 0;
+let chMeasured = 0;
+function measureCells() {
+  const ctx = document.createElement("canvas").getContext("2d");
+  ctx.font = `16px 'Cascadia Mono', Consolas, monospace`;
+  const m = ctx.measureText("\u2588");
+  cwMeasured = m.width > 0 ? m.width : 9.6;
+  chMeasured = (m.actualBoundingBoxAscent ?? 0) + (m.actualBoundingBoxDescent ?? 0);
+  if (!(chMeasured > 0)) chMeasured = 19.7;
+}
+function esc(s) { return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
+const cardEls = {};
+function rowHtmlFor(row) {
+  let out = "";
+  for (const cell of row) {
+    const styles = [];
+    if (cell.fg) styles.push(`color:${cell.fg}`);
+    if (cell.bg) styles.push(`background-color:${cell.bg}`);
+    if (cell.b) styles.push("font-weight:700");
+    out += styles.length ? `<span class="c" style="${styles.join(";")}">${esc(cell.c)}</span>` : `<span class="c">${esc(cell.c)}</span>`;
+  }
+  return out;
+}
+function renderCard(id, design) {
+  const state = cardEls[id];
+  const el = state.el;
+  el.style.setProperty("--cw", `${cwMeasured}px`);
+  el.style.setProperty("--ch", `${chMeasured}px`);
+  const rows = buildCard(design);
+  if (state.rowEls.length !== rows.length) {
+    el.innerHTML = "";
+    state.rowEls = [];
+    state.cache = [];
+    for (let r = 0; r < rows.length; r++) {
+      const d = document.createElement("div");
+      d.className = "r";
+      el.appendChild(d);
+      state.rowEls.push(d);
+      state.cache.push(null);
+    }
+  }
+  for (let r = 0; r < rows.length; r++) {
+    const html = rowHtmlFor(rows[r]);
+    if (state.cache[r] !== html) {
+      state.rowEls[r].innerHTML = html;
+      state.cache[r] = html;
+    }
+  }
+}
+
+const CARDS = {
+  cardBase: "base", cardSlow: "slow", cardQuick: "quick", cardShallow: "shallow",
+  cardDamped: "damped", cardFine: "fine", cardMoon: "moon", cardLagoon: "lagoon",
+  cardSunset: "sunset", cardArctic: "arctic", cardBlack: "black", cardBio: "bio",
+  cardSteel: "steel", cardMix: "mix", cardTurq: "turq",
+  cardSpentSlots: "spentSlots", cardEbb: "ebb", cardOver: "over",
+  cardGhost: "ghost", cardSand: "sand", cardHaze: "haze",
+  cardPalm: "palm", cardSurf: "surf",
+};
+for (const [id, design] of Object.entries(CARDS)) cardEls[id] = { el: document.getElementById(id), rowEls: [], cache: [] };
+document.getElementById("grid").addEventListener("change", (e) => {
+  for (const state of Object.values(cardEls)) state.el.classList.toggle("grid", e.target.checked);
+});
+
+const speedEl = document.getElementById("speed");
+const speedVal = document.getElementById("speedVal");
+const msEl = document.getElementById("ms");
+const msVal = document.getElementById("msVal");
+speedEl.addEventListener("input", (e) => {
+  phaseStep = parseFloat(e.target.value);
+  speedVal.textContent = phaseStep.toFixed(2) + "\u00d7";
+});
+let timer = null;
+msEl.addEventListener("input", (e) => {
+  const ms = parseInt(e.target.value, 10);
+  msVal.textContent = ms + "ms";
+  if (timer) clearInterval(timer);
+  timer = setInterval(frame, ms);
+});
+
+function frame() {
+  phase = (phase + phaseStep) % 100000;
+  for (const [id, design] of Object.entries(CARDS)) renderCard(id, design);
+}
+measureCells();
+if (document.fonts && document.fonts.ready) {
+  document.fonts.ready.then(() => { measureCells(); frame(); }).catch(() => {});
+}
+frame();
+timer = setInterval(frame, 120);
+</script>
+</body>
+</html>

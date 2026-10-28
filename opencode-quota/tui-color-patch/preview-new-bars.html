@@ -1,0 +1,1118 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>New quota bar concepts — pick a direction</title>
+<style>
+  :root { --cw: 8.4px; --ch: 24px; --fs: 16px; --font: 'Cascadia Mono', Consolas, 'JetBrains Mono', monospace; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body { background: #101010; color: #cfcfcf; font-family: 'Segoe UI', system-ui, sans-serif; font-size: 13px; padding: 22px 22px 70px; }
+  h1 { font-size: 18px; margin: 0 0 6px; }
+  .intro { color: #8b8b8b; font-size: 13px; line-height: 1.65; max-width: 1150px; margin-bottom: 6px; }
+  .intro b { color: #EC5B2B; }
+  .toolbar { margin: 14px 0 18px; color: #8b8b8b; font-size: 12.5px; }
+  .toolbar input { accent-color: #EC5B2B; }
+  .cards { display: flex; gap: 26px; flex-wrap: wrap; align-items: flex-start; }
+  .variant h3 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.07em; color: #EC5B2B; margin: 0 0 6px; }
+  .variant .note { color: #6f6f6f; font-size: 11.5px; margin: 0 0 8px; max-width: 430px; line-height: 1.5; }
+  .cardOuter { padding: 16px 22px; background: #0a0a0a; border-radius: 6px; display: inline-block; }
+  .card { display: flex; flex-direction: column; }
+  .r { display: flex; }
+  .c { flex: 0 0 var(--cw); height: var(--ch); line-height: var(--ch); font-family: var(--font); font-size: var(--fs); white-space: pre; overflow: hidden; }
+  .c.b { font-weight: 700; }
+  .card.grid .c { box-shadow: inset 0 0 0 1px rgba(255,255,255,0.07); }
+</style>
+</head>
+<body>
+
+<h1>New quota bar concepts — pick a direction</h1>
+<p class="intro">
+  Thirty-two 1-row bar designs (21 cells) — every single one inside the baseline bar size, live and animated
+  at the real speed in the real card layout. Every glyph is a full/half/eighth block or a verified font glyph —
+  nothing melts, nothing sub-pixel. The live sidebar stays as-is until you pick one.
+</p>
+<div class="toolbar"><label><input id="grid" type="checkbox"> show pixel cells</label></div>
+
+<div class="cards">
+  <section class="variant">
+    <h3>1 · Wave — flowing sine</h3>
+    <p class="note">The filled part is a smooth rolling wave (eighth blocks), height = energy. Empty part keeps a faint floor line.</p>
+    <div class="cardOuter"><div class="card" id="cardWave"></div></div>
+  </section>
+  <section class="variant">
+    <h3>2 · Comet — runner with trail</h3>
+    <p class="note">Dim bar; a white-hot comet head sweeps left→right leaving a fading trail behind it.</p>
+    <div class="cardOuter"><div class="card" id="cardComet"></div></div>
+  </section>
+  <section class="variant">
+    <h3>3 · Battery — chunky segments</h3>
+    <p class="note">Shaded segments (bright top / solid bottom), ghosted empty cells, and the newest segment breathing at the edge.</p>
+    <div class="cardOuter"><div class="card" id="cardBattery"></div></div>
+  </section>
+  <section class="variant">
+    <h3>4 · Equalizer — multi-wave</h3>
+    <p class="note">Per-cell bars driven by layered waves (busiest option). Fill edge = the quota percent.</p>
+    <div class="cardOuter"><div class="card" id="cardEq"></div></div>
+  </section>
+  <section class="variant">
+    <h3>5 · Gradient — clean &amp; calm</h3>
+    <p class="note">Deep-to-bright gradient with a soft traveling shimmer and a bright tip. The professional, low-key option.</p>
+    <div class="cardOuter"><div class="card" id="cardGradient"></div></div>
+  </section>
+  <section class="variant">
+    <h3>6 · Radar — sweeping beam</h3>
+    <p class="note">A soft wide beam sweeps back and forth across the whole bar; the filled part is solid, the empty part lights up faintly as the beam crosses it.</p>
+    <div class="cardOuter"><div class="card" id="cardRadar"></div></div>
+  </section>
+  <section class="variant">
+    <h3>7 · Loader — edge chase</h3>
+    <p class="note">Solid fill with a little 3-cell loading ladder climbing into the edge — the bar looks like it is still working on the last bit.</p>
+    <div class="cardOuter"><div class="card" id="cardLoader"></div></div>
+  </section>
+  <section class="variant">
+    <h3>8 · Chevron — marching weave</h3>
+    <p class="note">Two tones woven cell by cell, the weave marching forward — the classic "in progress" pattern, done with clean half-blocks.</p>
+    <div class="cardOuter"><div class="card" id="cardChevron"></div></div>
+  </section>
+  <section class="variant">
+    <h3>9 · Aurora — layered waves</h3>
+    <p class="note">Two independent waves — one on the top half of each cell, one on the bottom — drifting across the fill. Two layered surfaces in one row.</p>
+    <div class="cardOuter"><div class="card" id="cardAurora"></div></div>
+  </section>
+  <section class="variant">
+    <h3>10 · Signal — scrolling sawtooth</h3>
+    <p class="note">A clean staircase ramp repeating every 8 cells, scrolling along the fill like a machine signal.</p>
+    <div class="cardOuter"><div class="card" id="cardSignal"></div></div>
+  </section>
+  <section class="variant">
+    <h3>11 · Scanner — bouncing beam</h3>
+    <p class="note">A hard white block bounces left and right across the whole bar, Knight-Rider style, with a light halo. The fill sits solid underneath.</p>
+    <div class="cardOuter"><div class="card" id="cardScanner"></div></div>
+  </section>
+  <section class="variant">
+    <h3>12 · Inchworm — crawling stretch</h3>
+    <p class="note">A bright worm crawls along the fill, stretching and contracting as it moves; the head leads. It exits, then re-enters from the left.</p>
+    <div class="cardOuter"><div class="card" id="cardInchworm"></div></div>
+  </section>
+  <section class="variant">
+    <h3>13 · String — pluck &amp; settle</h3>
+    <p class="note">The fill is a plucked string: it swings wildly, settles, gets plucked again. A repeating, dramatic burst of motion.</p>
+    <div class="cardOuter"><div class="card" id="cardString"></div></div>
+  </section>
+  <section class="variant">
+    <h3>14 · Ripples — drop rings</h3>
+    <p class="note">Drops land at random spots and send bright rings expanding outward through the fill — three sources, each on its own rhythm.</p>
+    <div class="cardOuter"><div class="card" id="cardRipples"></div></div>
+  </section>
+  <section class="variant">
+    <h3>15 · Pulse — racing spike</h3>
+    <p class="note">A calm monitor line with a sharp spike racing through it, left to right, on repeat — with a small pre-bump and trailing dip.</p>
+    <div class="cardOuter"><div class="card" id="cardPulse"></div></div>
+  </section>
+  <section class="variant">
+    <h3>16 · Duet — crossing lights</h3>
+    <p class="note">Two lights travel through each other, one from each end, and flash white in the exact moment they cross.</p>
+    <div class="cardOuter"><div class="card" id="cardDuet"></div></div>
+  </section>
+  <section class="variant">
+    <h3>17 · Neon — flickering tube</h3>
+    <p class="note">The fill flickers like a tired neon tube — irregular, fast, electric. Every cell blinks on its own schedule.</p>
+    <div class="cardOuter"><div class="card" id="cardNeon"></div></div>
+  </section>
+  <section class="variant">
+    <h3>18 · Hopper — bouncing light</h3>
+    <p class="note">A light hops along the bar in arcs (tall in the middle, touching down between hops), leaving a faint warm trail. The bar beneath is a slim ledge.</p>
+    <div class="cardOuter"><div class="card" id="cardHopper"></div></div>
+  </section>
+  <section class="variant">
+    <h3>19 · Stream — packet flow</h3>
+    <p class="note">Evenly spaced packets of light flow rightward in a steady stream — soothing, continuous throughput.</p>
+    <div class="cardOuter"><div class="card" id="cardStream"></div></div>
+  </section>
+  <section class="variant">
+    <h3>20 · Quake — rumble bursts</h3>
+    <p class="note">Every few seconds the bar rumbles — hard brightness jitter everywhere — then settles back to a calm shimmer. Episodic chaos.</p>
+    <div class="cardOuter"><div class="card" id="cardQuake"></div></div>
+  </section>
+  <section class="variant">
+    <h3>21 · PAC-MAN — baseline size</h3>
+    <p class="note">One row, like every other bar: his actual silhouette frames — ◖ (mouth open) chomping to ● (mouth closed) — running the pellet line, flashing the pellets ahead of his mouth. Both glyphs verified present in Cascadia Mono.</p>
+    <div class="cardOuter"><div class="card" id="cardPacman"></div></div>
+  </section>
+  <section class="variant">
+    <h3>22 · THE MATRIX — digital rain</h3>
+    <p class="note">0s and 1s flickering in Matrix green, with a bright "drop" sweeping through. Follow the white rabbit.</p>
+    <div class="cardOuter"><div class="card" id="cardMatrix"></div></div>
+  </section>
+  <section class="variant">
+    <h3>23 · MINECRAFT — hearts</h3>
+    <p class="note">A row of Minecraft hearts — full, then empty. The edge heart wobbles, random hearts flicker from damage, and when you're low the whole row beats faster.</p>
+    <div class="cardOuter"><div class="card" id="cardHearts"></div></div>
+  </section>
+  <section class="variant">
+    <h3>24 · POKÉMON — HP bar</h3>
+    <p class="note">The classic HP bar: top-lit sheen (green → yellow → red automatically), and every few seconds it takes damage and drains down smoothly, with a little shake.</p>
+    <div class="cardOuter"><div class="card" id="cardPokehp"></div></div>
+  </section>
+  <section class="variant">
+    <h3>25 · TETRIS — tetromino blocks</h3>
+    <p class="note">The fill in the seven classic Tetris block colors, the edge piece blinking like an active tetromino, and a line-clear flash sweeping through periodically.</p>
+    <div class="cardOuter"><div class="card" id="cardTetris"></div></div>
+  </section>
+  <section class="variant">
+    <h3>26 · SONIC — rings &amp; speed</h3>
+    <p class="note">A field of golden rings, all shimmering; a blue speed streak (») tears through, flashing the rings it passes. Gotta go fast.</p>
+    <div class="cardOuter"><div class="card" id="cardRings"></div></div>
+  </section>
+  <section class="variant">
+    <h3>27 · AMONG US — task bar</h3>
+    <p class="note">The segmented lime task bar: every cell is a segment with its notch, the newest lights up, and random segments pop bright like tasks being completed.</p>
+    <div class="cardOuter"><div class="card" id="cardAmongus"></div></div>
+  </section>
+  <section class="variant">
+    <h3>28 · OCEAN — the wave tank</h3>
+    <p class="note">A real tank, solved not faked: 12 standing modes, each an exact pair of opposite-traveling waves, obeying the deep-water dispersion law (ω ∝ √n — short waves run faster). Crests hit both walls, double up (clapotis), and re-launch; Stokes-type crest sharpening and capillary shimmer ride on top. It physically cannot desync — it's the actual solution of the wave equation.</p>
+    <div class="cardOuter"><div class="card" id="cardOcean"></div></div>
+  </section>
+  <section class="variant">
+    <h3>29 · SEICHE — the tank sloshes</h3>
+    <p class="note">The bathtub phenomenon, tuned: the fundamental slosh mode dominates — the whole surface rocks end over end, one wall cresting while the other troughs, with chop riding the slide and whitecaps slamming and falling back at both ends each pass.</p>
+    <div class="cardOuter"><div class="card" id="cardSeiche"></div></div>
+  </section>
+  <section class="variant">
+    <h3>30 · PENDULUM WAVE — 21 bobs, 21 frequencies</h3>
+    <p class="note">Every cell is a pendulum with its own frequency, so the row shears into snaking traveling patterns and periodically snaps into perfect unison — the wave machine, in one row.</p>
+    <div class="cardOuter"><div class="card" id="cardPendulum"></div></div>
+  </section>
+  <section class="variant">
+    <h3>31 · DROP — the tank rings</h3>
+    <p class="note">One impulse excites all twelve modes coherently: the splash splits into two wavefronts that race out, slam both walls, refocus back at the impact point, pass through each other and re-focus again — the full transient response of the exact solution, dispersing and re-sharpening.</p>
+    <div class="cardOuter"><div class="card" id="cardDrop"></div></div>
+  </section>
+  <section class="variant">
+    <h3>32 · CROSS — two seas collide</h3>
+    <p class="note">Two drop systems in flight at once, launched from different points half a cycle apart: their expanding wavefronts cross, interfere, refocus — and everything still bounces off both walls. The tank arguing with itself.</p>
+    <div class="cardOuter"><div class="card" id="cardCross"></div></div>
+  </section>
+</div>
+
+<script>
+"use strict";
+const THEME = {
+  textBase: "#eeeeee", muted: "#808080", accent: "#EC5B2B",
+  success: "#6ba1e6", warning: "#EC5B2B", error: "#e06c75",
+  border: "#EC5B2B", pageBg: "#0a0a0a",
+};
+const DARK = "#0f0d0b";
+const SPEED = 2.25;
+const BAR_CELLS = 21;
+const EIGHTHS = ["\u2581", "\u2582", "\u2583", "\u2584", "\u2585", "\u2586", "\u2587", "\u2588"];
+
+function hexToInts(hex) { const h = hex.replace("#", ""); return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)]; }
+function intsToHex(ints) { return "#" + ints.map((v) => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, "0")).join(""); }
+function mix(a, b, t) { const x = hexToInts(a), y = hexToInts(b); return intsToHex(x.map((v, i) => v + (y[i] - v) * t)); }
+function scale(hex, f) { return intsToHex(hexToInts(hex).map((v) => v * f)); }
+function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
+function bucketColor(pct, mode) {
+  const remaining = mode === "used" ? 100 - pct : pct;
+  return remaining < 30 ? THEME.error : remaining < 70 ? THEME.warning : THEME.success;
+}
+function slot(C) { return mix(THEME.pageBg, C, 0.24); }
+
+// ============================================================================
+// THE FIVE BAR DESIGNS — cell-level, 21 cells, 1 row. These exact functions
+// port 1:1 into the sidebar plugin.
+// ============================================================================
+function barWave(pct, phase, C) {
+  const T = phase * SPEED;
+  const filled = Math.round((pct / 100) * BAR_CELLS);
+  const deep = mix(C, DARK, 0.55);
+  const bright = mix(C, "#ffffff", 0.5);
+  const cells = [];
+  for (let i = 0; i < BAR_CELLS; i++) {
+    if (i < filled) {
+      const level = clamp(Math.round(4.6 + 3.3 * Math.sin((i / BAR_CELLS) * Math.PI * 2 * 1.15 - T * 0.42)), 1, 8);
+      cells.push({ g: EIGHTHS[level - 1], fg: mix(deep, bright, (level - 1) / 7) });
+    } else {
+      cells.push({ g: "\u2581", fg: slot(C) });
+    }
+  }
+  return cells;
+}
+function barComet(pct, phase, C) {
+  const T = phase * SPEED;
+  const filled = Math.round((pct / 100) * BAR_CELLS);
+  const deep = mix(C, DARK, 0.62);
+  const bright = mix(C, "#ffffff", 0.45);
+  const hot = mix(C, "#ffffff", 0.92);
+  const span = Math.max(4, filled + 4);
+  const pos = (T * 0.5) % span;
+  const cells = [];
+  for (let i = 0; i < BAR_CELLS; i++) {
+    if (i < filled) {
+      const d = pos - i;
+      if (d >= 0 && d < 4.2) {
+        const w = d < 1 ? 1 : Math.max(0, 1 - (d - 1) / 3.2);
+        cells.push({ g: "\u2588", fg: w > 0.9 ? hot : mix(deep, bright, 0.2 + 0.8 * w) });
+      } else {
+        cells.push({ g: "\u2588", fg: deep });
+      }
+    } else {
+      cells.push({ g: "\u2581", fg: slot(C) });
+    }
+  }
+  return cells;
+}
+function barBattery(pct, phase, C) {
+  const T = phase * SPEED;
+  const filled = Math.round((pct / 100) * BAR_CELLS);
+  const sheen = mix(C, "#ffffff", 0.3);
+  const breathe = 0.5 + 0.5 * Math.sin(T * 0.5);
+  const cells = [];
+  for (let i = 0; i < BAR_CELLS; i++) {
+    if (i < filled) {
+      if (i === filled - 1) {
+        cells.push({ g: "\u2588", fg: mix(C, "#ffffff", 0.35 + 0.5 * breathe) });
+      } else {
+        cells.push({ g: "\u2580", fg: sheen, bg: C });
+      }
+    } else {
+      cells.push({ g: "\u2591", fg: mix(THEME.pageBg, C, 0.3) });
+    }
+  }
+  return cells;
+}
+function barEq(pct, phase, C) {
+  const T = phase * SPEED;
+  const filled = Math.round((pct / 100) * BAR_CELLS);
+  const deep = mix(C, DARK, 0.55);
+  const bright = mix(C, "#ffffff", 0.5);
+  const cells = [];
+  for (let i = 0; i < BAR_CELLS; i++) {
+    if (i < filled) {
+      const level = clamp(Math.round(4.2 + 2.7 * Math.sin(i * 0.9 - T * 0.6) + 1.7 * Math.sin(i * 2.1 + T * 0.37)), 1, 8);
+      cells.push({ g: EIGHTHS[level - 1], fg: mix(deep, bright, (level - 1) / 7) });
+    } else {
+      cells.push({ g: "\u2581", fg: slot(C) });
+    }
+  }
+  return cells;
+}
+function barGradient(pct, phase, C) {
+  const T = phase * SPEED;
+  const filled = Math.round((pct / 100) * BAR_CELLS);
+  const deep = mix(C, DARK, 0.5);
+  const bright = mix(C, "#ffffff", 0.55);
+  const cells = [];
+  for (let i = 0; i < BAR_CELLS; i++) {
+    if (i < filled) {
+      const base = filled <= 1 ? 1 : i / (filled - 1);
+      let col = mix(deep, bright, 0.15 + 0.85 * base);
+      col = scale(col, clamp(1 + 0.06 * Math.sin(i * 0.8 - T * 0.5), 0.92, 1.08));
+      if (i === filled - 1) col = mix(C, "#ffffff", 0.78);
+      cells.push({ g: "\u2588", fg: col });
+    } else {
+      cells.push({ g: "\u2581", fg: slot(C) });
+    }
+  }
+  return cells;
+}
+function barRadar(pct, phase, C) {
+  const T = phase * SPEED;
+  const filled = Math.round((pct / 100) * BAR_CELLS);
+  const deep = mix(C, DARK, 0.6);
+  const bright = mix(C, "#ffffff", 0.55);
+  const p = (Math.sin(T * 0.22) * 0.5 + 0.5) * (BAR_CELLS - 1);
+  const cells = [];
+  for (let i = 0; i < BAR_CELLS; i++) {
+    const w = Math.max(0, 1 - Math.abs(i - p) / 4);
+    if (i < filled) {
+      cells.push({ g: "\u2588", fg: mix(deep, bright, Math.min(1, 0.15 + 0.85 * w)) });
+    } else {
+      cells.push({ g: "\u2581", fg: mix(slot(C), bright, 0.55 * w) });
+    }
+  }
+  if (filled > 0) cells[filled - 1] = { g: "\u2588", fg: mix(C, "#ffffff", 0.72) };
+  return cells;
+}
+function barLoader(pct, phase, C) {
+  const T = phase * SPEED;
+  const filled = Math.round((pct / 100) * BAR_CELLS);
+  const deep = mix(C, DARK, 0.55);
+  const bright = mix(C, "#ffffff", 0.5);
+  const cells = [];
+  for (let i = 0; i < BAR_CELLS; i++) {
+    if (i < filled) {
+      const fromEdge = filled - 1 - i;
+      if (fromEdge < 3) {
+        const level = clamp(Math.round(1 + 7 * (0.5 + 0.5 * Math.sin(fromEdge * 1.6 - T * 1.2))), 1, 8);
+        cells.push({ g: EIGHTHS[level - 1], fg: mix(deep, bright, level / 8) });
+      } else {
+        cells.push({ g: "\u2588", fg: deep });
+      }
+    } else {
+      cells.push({ g: "\u2581", fg: slot(C) });
+    }
+  }
+  if (filled > 0) cells[filled - 1] = { g: "\u2588", fg: mix(C, "#ffffff", 0.7) };
+  return cells;
+}
+function barChevron(pct, phase, C) {
+  const T = phase * SPEED;
+  const filled = Math.round((pct / 100) * BAR_CELLS);
+  const shadeA = mix(C, "#ffffff", 0.42);
+  const shadeB = mix(C, DARK, 0.35);
+  const cells = [];
+  for (let i = 0; i < BAR_CELLS; i++) {
+    if (i < filled) {
+      const wave = 0.5 + 0.5 * Math.sin(i * 0.9 - T * 0.5);
+      cells.push({ g: "\u2580", fg: mix(shadeB, shadeA, wave), bg: mix(shadeB, shadeA, 1 - wave) });
+    } else {
+      cells.push({ g: "\u2581", fg: slot(C) });
+    }
+  }
+  return cells;
+}
+function barAurora(pct, phase, C) {
+  const T = phase * SPEED;
+  const filled = Math.round((pct / 100) * BAR_CELLS);
+  const deep = mix(C, DARK, 0.6);
+  const bright = mix(C, "#ffffff", 0.55);
+  const cells = [];
+  for (let i = 0; i < BAR_CELLS; i++) {
+    if (i < filled) {
+      const wa = 0.5 + 0.5 * Math.sin(i * 0.55 - T * 0.3);
+      const wb = 0.5 + 0.5 * Math.sin(i * 0.55 - T * 0.3 + 2.1);
+      cells.push({ g: "\u2580", fg: mix(deep, bright, wa), bg: mix(deep, bright, wb) });
+    } else {
+      cells.push({ g: "\u2581", fg: slot(C) });
+    }
+  }
+  return cells;
+}
+function barSignal(pct, phase, C) {
+  const T = phase * SPEED;
+  const filled = Math.round((pct / 100) * BAR_CELLS);
+  const deep = mix(C, DARK, 0.55);
+  const bright = mix(C, "#ffffff", 0.5);
+  const cells = [];
+  for (let i = 0; i < BAR_CELLS; i++) {
+    if (i < filled) {
+      const r = (((i - T * 0.42) % 8) + 8) % 8;
+      const level = Math.round(1 + (r / 8) * 7);
+      cells.push({ g: EIGHTHS[level - 1], fg: mix(deep, bright, (level - 1) / 7) });
+    } else {
+      cells.push({ g: "\u2581", fg: slot(C) });
+    }
+  }
+  return cells;
+}
+function hash(n) {
+  const s = Math.sin(n * 127.1 + 311.7) * 43758.5453;
+  return s - Math.floor(s);
+}
+function barScanner(pct, phase, C) {
+  const T = phase * SPEED;
+  const filled = Math.round((pct / 100) * BAR_CELLS);
+  const solid = mix(C, DARK, 0.5);
+  const head = mix(C, "#ffffff", 0.88);
+  const halo = mix(C, "#ffffff", 0.3);
+  const pos = (Math.sin(T * 0.5) * 0.5 + 0.5) * (BAR_CELLS - 1);
+  const cells = [];
+  for (let i = 0; i < BAR_CELLS; i++) {
+    const d = Math.abs(i - pos);
+    if (d < 1.2) cells.push({ g: "\u2588", fg: head });
+    else if (i < filled) cells.push({ g: "\u2588", fg: d < 2.2 ? halo : solid });
+    else cells.push({ g: "\u2581", fg: d < 2.2 ? halo : slot(C) });
+  }
+  return cells;
+}
+function barInchworm(pct, phase, C) {
+  const T = phase * SPEED;
+  const filled = Math.round((pct / 100) * BAR_CELLS);
+  const solid = mix(C, DARK, 0.55);
+  const worm = mix(C, "#ffffff", 0.5);
+  const head = mix(C, "#ffffff", 0.9);
+  const len = 3 + 2 * (0.5 + 0.5 * Math.sin(T * 0.5));
+  const span = filled + len + 2;
+  const pos = span > 0 ? (T * 0.35) % span : 0;
+  const cells = [];
+  for (let i = 0; i < BAR_CELLS; i++) {
+    if (i < filled) {
+      const d = pos - i;
+      if (d >= 0 && d < len) cells.push({ g: "\u2588", fg: d < 1 ? head : worm });
+      else cells.push({ g: "\u2588", fg: solid });
+    } else {
+      cells.push({ g: "\u2581", fg: slot(C) });
+    }
+  }
+  return cells;
+}
+function barString(pct, phase, C) {
+  const T = phase * SPEED;
+  const filled = Math.round((pct / 100) * BAR_CELLS);
+  const deep = mix(C, DARK, 0.55);
+  const bright = mix(C, "#ffffff", 0.55);
+  const cyc = (T * 0.09) % 1;
+  const env = Math.exp(-cyc * 3.2);
+  const cells = [];
+  for (let i = 0; i < BAR_CELLS; i++) {
+    if (i < filled) {
+      const v = 4.2 + env * 3.6 * Math.sin(i * 1.15 - T * 0.9);
+      const level = clamp(Math.round(v), 1, 8);
+      cells.push({ g: EIGHTHS[level - 1], fg: mix(deep, bright, (level - 1) / 7) });
+    } else {
+      cells.push({ g: "\u2581", fg: slot(C) });
+    }
+  }
+  return cells;
+}
+function barRipples(pct, phase, C) {
+  const T = phase * SPEED;
+  const filled = Math.round((pct / 100) * BAR_CELLS);
+  const solid = mix(C, DARK, 0.62);
+  const bright = mix(C, "#ffffff", 0.65);
+  const peaks = new Array(BAR_CELLS).fill(0);
+  const span = Math.max(1, filled);
+  for (let k = 0; k < 3; k++) {
+    const src = Math.floor(hash(k * 7.7 + 1.1) * span) % span;
+    const period = 30 + hash(k * 3.3 + 2.2) * 36;
+    const age = (T + hash(k * 5.5 + 4.4) * period) % period;
+    const radius = age * 0.5;
+    const fade = Math.max(0, 1 - age / period);
+    for (let i = 0; i < BAR_CELLS; i++) {
+      const w = Math.max(0, 1 - Math.abs(Math.abs(i - src) - radius) / 1.5) * fade;
+      if (w > peaks[i]) peaks[i] = w;
+    }
+  }
+  const cells = [];
+  for (let i = 0; i < BAR_CELLS; i++) {
+    if (i < filled) cells.push({ g: "\u2588", fg: mix(solid, bright, clamp(peaks[i], 0, 1)) });
+    else cells.push({ g: "\u2581", fg: slot(C) });
+  }
+  return cells;
+}
+function barPulse(pct, phase, C) {
+  const T = phase * SPEED;
+  const filled = Math.round((pct / 100) * BAR_CELLS);
+  const line = mix(C, DARK, 0.5);
+  const spike = mix(C, "#ffffff", 0.88);
+  const span = Math.max(6, filled + 6);
+  const p = (T * 0.6) % span;
+  const cells = [];
+  for (let i = 0; i < BAR_CELLS; i++) {
+    if (i < filled) {
+      const d = i - p;
+      let level = 3;
+      let col = line;
+      if (d >= -0.5 && d < 1.5) { level = 8; col = spike; }
+      else if (d >= 1.5 && d < 2.5) { level = 1; col = mix(line, DARK, 0.35); }
+      else if (d >= -1.5 && d < -0.5) { level = 5; col = mix(line, "#ffffff", 0.18); }
+      cells.push({ g: EIGHTHS[level - 1], fg: col });
+    } else {
+      cells.push({ g: "\u2581", fg: slot(C) });
+    }
+  }
+  return cells;
+}
+function barDuet(pct, phase, C) {
+  const T = phase * SPEED;
+  const filled = Math.round((pct / 100) * BAR_CELLS);
+  const solid = mix(C, DARK, 0.62);
+  const bright = mix(C, "#ffffff", 0.6);
+  const hot = mix(C, "#ffffff", 0.92);
+  const span = Math.max(6, filled + 4);
+  const pA = (T * 0.55) % span;
+  const pB = filled - ((T * 0.55 + span / 2) % span);
+  const cells = [];
+  for (let i = 0; i < BAR_CELLS; i++) {
+    if (i < filled) {
+      const dA = Math.abs(i - pA);
+      const dB = Math.abs(i - pB);
+      const wA = Math.max(0, 1 - dA / 3.2);
+      const wB = Math.max(0, 1 - dB / 3.2);
+      let col = mix(solid, bright, Math.max(wA, wB));
+      if (dA < 0.9 || dB < 0.9) col = hot;
+      if (dA < 1.6 && dB < 1.6) col = "#ffffff";
+      cells.push({ g: "\u2588", fg: col });
+    } else {
+      cells.push({ g: "\u2581", fg: slot(C) });
+    }
+  }
+  return cells;
+}
+function barNeon(pct, phase, C) {
+  const T = phase * SPEED;
+  const filled = Math.round((pct / 100) * BAR_CELLS);
+  const dim = mix(C, DARK, 0.72);
+  const lit = mix(C, "#ffffff", 0.5);
+  const hot = mix(C, "#ffffff", 0.82);
+  const tick = Math.floor(T * 1.4);
+  const cells = [];
+  for (let i = 0; i < BAR_CELLS; i++) {
+    if (i < filled) {
+      const r = hash(i * 17.7 + tick * 13.1 + 2.3);
+      const col = r > 0.86 ? hot : r > 0.6 ? lit : dim;
+      cells.push({ g: "\u2588", fg: col });
+    } else {
+      cells.push({ g: "\u2581", fg: slot(C) });
+    }
+  }
+  return cells;
+}
+function barHopper(pct, phase, C) {
+  const T = phase * SPEED;
+  const filled = Math.round((pct / 100) * BAR_CELLS);
+  const floorF = mix(C, DARK, 0.4);
+  const warm = mix(C, "#ffffff", 0.5);
+  const hot = mix(C, "#ffffff", 0.9);
+  const span = Math.max(6, filled + 5);
+  const p = (T * 0.5) % span;
+  const level = clamp(Math.round(1 + 7 * Math.abs(Math.sin((p * Math.PI) / 4))), 1, 8);
+  const cells = [];
+  for (let i = 0; i < BAR_CELLS; i++) {
+    if (i < filled) {
+      const d = p - i;
+      let g = "\u2581";
+      let col = floorF;
+      if (Math.abs(d) < 0.95) {
+        g = EIGHTHS[level - 1];
+        col = level > 5 ? hot : warm;
+      } else if (d >= 0.95 && d < 2.8) {
+        col = mix(floorF, warm, 0.55 * (1 - (d - 0.95) / 1.85));
+      }
+      cells.push({ g, fg: col });
+    } else {
+      cells.push({ g: "\u2581", fg: slot(C) });
+    }
+  }
+  return cells;
+}
+function barStream(pct, phase, C) {
+  const T = phase * SPEED;
+  const filled = Math.round((pct / 100) * BAR_CELLS);
+  const solid = mix(C, DARK, 0.62);
+  const bright = mix(C, "#ffffff", 0.55);
+  const period = 5;
+  const cells = [];
+  for (let i = 0; i < BAR_CELLS; i++) {
+    if (i < filled) {
+      const r = ((((i - T * 0.7) % period) + period) % period);
+      const w = r < 1.4 ? 1 - r / 1.4 : 0;
+      cells.push({ g: "\u2588", fg: mix(solid, bright, w * 0.95) });
+    } else {
+      cells.push({ g: "\u2581", fg: slot(C) });
+    }
+  }
+  return cells;
+}
+function barQuake(pct, phase, C) {
+  const T = phase * SPEED;
+  const filled = Math.round((pct / 100) * BAR_CELLS);
+  const base = mix(C, DARK, 0.5);
+  const bright = mix(C, "#ffffff", 0.6);
+  const cyc = (T * 0.019) % 1;
+  const env = Math.exp(-cyc * 5);
+  const tick = Math.floor(T * 2.1);
+  const cells = [];
+  for (let i = 0; i < BAR_CELLS; i++) {
+    if (i < filled) {
+      const n = hash(i * 15.3 + tick * 7.7 + 1.9);
+      const jitter = (n - 0.5) * env * 1.15;
+      const shimmer = 0.3 + 0.12 * Math.sin(i * 0.7 - T * 0.5);
+      const level = clamp(shimmer + jitter + env * 0.25, 0, 1);
+      cells.push({ g: "\u2588", fg: mix(base, bright, level) });
+    } else {
+      cells.push({ g: "\u2581", fg: slot(C) });
+    }
+  }
+  return cells;
+}
+// ---- pop-culture batch ----
+// Pac-Man at baseline size: his actual silhouette frames — ◖ (mouth open) and ●
+// (mouth closed) — chomping across the pellet line. Both glyphs verified present
+// in Cascadia Mono and Segoe UI Symbol on this machine.
+function barPacman(pct, phase, C) {
+  const T = phase * SPEED;
+  const filled = Math.round((pct / 100) * BAR_CELLS);
+  const pac = "#ffe600";
+  const pellet = mix(C, "#ffb897", 0.4);
+  const hot = mix("#ffb897", "#ffffff", 0.7);
+  const span = BAR_CELLS + 2;
+  const pos = ((T * 0.28) % span) - 1;
+  const frame = Math.sin(T * 0.55) > 0 ? "\u25d6" : "\u25cf";
+  const cells = [];
+  for (let i = 0; i < BAR_CELLS; i++) {
+    if (i < filled) {
+      const d = i - pos;
+      cells.push({ g: "\u25aa", fg: d > 0 && d < 1.9 ? hot : pellet });
+    } else {
+      cells.push({ g: "\u2581", fg: slot(C) });
+    }
+  }
+  const pc = Math.round(pos);
+  if (pc >= 0 && pc < BAR_CELLS) cells[pc] = { g: frame, fg: pac };
+  return cells;
+}
+function barMatrix(pct, phase, C) {
+  const T = phase * SPEED;
+  const filled = Math.round((pct / 100) * BAR_CELLS);
+  const green = "#00ff41";
+  const dim = mix("#0a0a0a", green, 0.5);
+  const bright = mix(green, "#eafff0", 0.75);
+  const tick = Math.floor(T * 1.2);
+  const span = Math.max(6, filled + 3);
+  const head = (T * 0.8) % span - 1.5;
+  const cells = [];
+  for (let i = 0; i < BAR_CELLS; i++) {
+    if (i < filled) {
+      const g = hash(i * 7.3 + tick * 5.1) > 0.5 ? "1" : "0";
+      const w = Math.max(0, 1 - Math.abs(i - head) / 2.2);
+      cells.push({ g, fg: mix(dim, bright, Math.min(1, 0.28 + 0.72 * w)) });
+    } else {
+      cells.push({ g: "\u2581", fg: mix("#0a0a0a", green, 0.16) });
+    }
+  }
+  return cells;
+}
+function barHearts(pct, phase, C) {
+  const T = phase * SPEED;
+  const filled = Math.round((pct / 100) * BAR_CELLS);
+  const rate = pct < 30 ? 2.2 : 0.5;
+  const amp = pct < 30 ? 0.22 : 0.1;
+  const throb = 1 - amp + amp * (0.5 + 0.5 * Math.sin(T * rate));
+  const red = "#ff5555";
+  const emptyRed = "#3a1f1f";
+  const tick = Math.floor(T * 0.35);
+  const cells = [];
+  for (let i = 0; i < BAR_CELLS; i++) {
+    if (i < filled) {
+      let f = throb;
+      if (i === filled - 1) f *= 1.15;
+      if (hash(i * 3.3 + tick * 9.1) > 0.92) f *= 0.45;
+      cells.push({ g: "\u2665", fg: scale(red, clamp(f, 0.2, 1.3)) });
+    } else {
+      cells.push({ g: "\u2665", fg: emptyRed });
+    }
+  }
+  return cells;
+}
+function barPokehp(pct, phase, C) {
+  const T = phase * SPEED;
+  const cyc = (T * 0.011) % 1;
+  const displayed = clamp(pct + 22 * Math.exp(-cyc * 6), 0, 100);
+  const filled = Math.min(BAR_CELLS, Math.round((displayed / 100) * BAR_CELLS));
+  const sheen = mix(C, "#ffffff", 0.45);
+  const shake = cyc < 0.14 ? (hash(Math.floor(T * 3.1) + 0.7) - 0.5) * 0.18 : 0;
+  const f = clamp(1 + shake, 0.75, 1.15);
+  const cells = [];
+  for (let i = 0; i < BAR_CELLS; i++) {
+    if (i < filled) {
+      cells.push({ g: "\u2580", fg: scale(sheen, f), bg: scale(C, f) });
+    } else {
+      cells.push({ g: "\u2591", fg: mix("#0a0a0a", C, 0.28) });
+    }
+  }
+  return cells;
+}
+const TETRIS_PALETTE = ["#00f0f0", "#f0f000", "#a000f0", "#00f000", "#f00000", "#0000f0", "#f0a000"];
+function barTetris(pct, phase, C) {
+  const T = phase * SPEED;
+  const filled = Math.round((pct / 100) * BAR_CELLS);
+  const cyc = (T * 0.015) % 1;
+  const flash = cyc < 0.14 ? 1 - cyc / 0.14 : 0;
+  const cells = [];
+  for (let i = 0; i < BAR_CELLS; i++) {
+    if (i < filled) {
+      let col = TETRIS_PALETTE[Math.floor(i / 2) % TETRIS_PALETTE.length];
+      if (i >= filled - 2) col = scale(col, 0.55 + 0.45 * Math.sin(T * 2.2));
+      if (flash > 0) col = mix(col, "#ffffff", flash * 0.85);
+      cells.push({ g: "\u2588", fg: col });
+    } else {
+      cells.push({ g: "\u2591", fg: "#2c2c2c" });
+    }
+  }
+  return cells;
+}
+function barRings(pct, phase, C) {
+  const T = phase * SPEED;
+  const filled = Math.round((pct / 100) * BAR_CELLS);
+  const gold = "#ffd34a";
+  const streak = "#2e6df0";
+  const span = Math.max(6, filled + 4);
+  const pos = (T * 1.05) % span - 1;
+  const cells = [];
+  for (let i = 0; i < BAR_CELLS; i++) {
+    if (i < filled) {
+      const d = pos - i;
+      if (Math.abs(d) < 1.3) cells.push({ g: "\u25cb", fg: mix(gold, "#ffffff", 0.75) });
+      else if (d > 1.3 && d < 3.0) cells.push({ g: "\u00bb", fg: mix(streak, "#0a0a0a", 0.25) });
+      else {
+        const shim = 0.75 + 0.25 * Math.sin(i * 0.8 - T * 0.9);
+        cells.push({ g: "\u25cb", fg: scale(gold, shim) });
+      }
+    } else {
+      cells.push({ g: "\u2581", fg: slot(C) });
+    }
+  }
+  return cells;
+}
+function barAmongus(pct, phase, C) {
+  const T = phase * SPEED;
+  const filled = Math.round((pct / 100) * BAR_CELLS);
+  const lime = "#a6e04a";
+  const dark = "#2f3a2a";
+  const tick = Math.floor(T * 0.75);
+  const cells = [];
+  for (let i = 0; i < BAR_CELLS; i++) {
+    if (i < filled) {
+      let f = 1;
+      if (i === filled - 1) f = 0.8 + 0.2 * Math.sin(T * 1.4);
+      if (hash(i * 5.7 + tick * 3.9) > 0.9) f += 0.35;
+      cells.push({ g: "\u2589", fg: scale(lime, clamp(f, 0.5, 1.4)) });
+    } else {
+      cells.push({ g: "\u2589", fg: dark });
+    }
+  }
+  return cells;
+}
+// ---- media batch ----
+function waterPixel(h, hLag, i, T, foamAt, spray) {
+  const lvl = clamp(Math.round(2 + h * 6), 2, 8);
+  let fg = mix("#0a2036", "#3ba0d6", Math.min(1, h * 1.9));
+  fg = mix(fg, "#a8f0ff", Math.max(0, (h - 0.55) / 0.45) * 0.85);
+  const foamH = Math.max(h, hLag * 0.96);
+  const foamI = clamp((foamH - foamAt) / 0.16, 0, 1) * clamp(h * 1.6, 0.3, 1);
+  if (foamI < 0.05) return { g: EIGHTHS[lvl - 1], fg };
+  const churn = Math.sin(T * 1.25 + i * 0.5) * 0.5 + Math.sin(T * 2.1 - i * 0.9) * 0.25;
+  fg = mix(fg, "#eafcff", clamp(foamI * 0.95 + churn * 0.1, 0, 1) * 0.85);
+  const cell = { g: EIGHTHS[lvl - 1], fg };
+  const cap = clamp(foamI * 1.15 + churn * 0.25, 0, 1) * clamp((h - 0.35) / 0.5, 0, 1);
+  if (cap > 0.04) {
+    let bg = mix("#5fb3e0", "#ffffff", Math.pow(cap, 0.7));
+    if (spray > 0 && cap > 0.78 && churn > 0.58) bg = "#ffffff";
+    cell.bg = bg;
+  }
+  return cell;
+}
+function tankRender(pct, phase, C, weightFn, w0, tScale, gustFreq, gain, foamAt, spray, lag) {
+  const T = phase * SPEED;
+  const filled = Math.round((pct / 100) * BAR_CELLS);
+  const W = Math.max(1, filled - 1);
+  const A = [];
+  const P = [];
+  let sumsq = 0;
+  for (let n = 1; n <= 12; n++) {
+    const a = weightFn(n) * (0.6 + 0.4 * hash(n * 3.77));
+    A.push(a);
+    P.push(hash(n * 9.13) * Math.PI * 2);
+    sumsq += a * a;
+  }
+  const norm = Math.max(1e-6, Math.sqrt(sumsq / 2));
+  const gust = gustFreq > 0 ? 0.72 + 0.28 * Math.sin(T * gustFreq) : 1;
+  const cells = [];
+  for (let i = 0; i < BAR_CELLS; i++) {
+    if (i < filled) {
+      const x = i / W;
+      let uA = 0;
+      let uB = 0;
+      for (let m = 0; m < 12; m++) {
+        const n = m + 1;
+        const base = Math.cos(Math.PI * n * x);
+        const om = w0 * Math.sqrt(n) * tScale;
+        uA += A[m] * base * Math.cos(om * T + P[m]);
+        uB += A[m] * base * Math.cos(om * (T - lag) + P[m]);
+      }
+      const mk = (u) => {
+        let v = u + 0.32 * u * u;
+        v += 0.03 * Math.sin((x * 2.5 + T * 0.1) * Math.PI * 2);
+        v += 0.02 * Math.sin((x * 4.5 - T * 0.14) * Math.PI * 2);
+        return clamp(0.5 + v * 0.6, 0, 1);
+      };
+      const h = mk((uA / norm) * gain * gust);
+      const hLag = mk((uB / norm) * gain * gust);
+      cells.push(waterPixel(h, hLag, i, T, foamAt, spray));
+    } else {
+      cells.push({ g: "\u2581", fg: slot(C) });
+    }
+  }
+  return cells;
+}
+function barOcean(pct, phase, C) {
+  return tankRender(pct, phase, C, (n) => (n <= 5 ? 1 : n <= 8 ? 0.45 : 0.2), 0.26, 1, 0, 0.75, 0.7, 0.1, 8);
+}
+function barSeiche(pct, phase, C) {
+  return tankRender(pct, phase, C, (n) => (n === 1 ? 1.7 : n === 2 ? 0.8 : n === 3 ? 0.45 : n === 4 ? 0.35 : n <= 8 ? 0.2 : 0.1), 0.26, 0.5, 0, 0.6, 0.8, 0.12, 12);
+}
+function dropRender(pct, phase, C, double, rate, gain, w0, foamAt, spray, lag) {
+  const T = phase * SPEED;
+  const filled = Math.round((pct / 100) * BAR_CELLS);
+  const W = Math.max(1, filled - 1);
+  const A = [];
+  let sumsq = 0;
+  for (let n = 1; n <= 12; n++) {
+    const a = (0.75 + 0.25 * hash(n * 3.77)) / Math.pow(n, 0.35);
+    A.push(a);
+    sumsq += a * a;
+  }
+  const norm = Math.max(1e-6, Math.sqrt(sumsq / 2));
+  const cyc = T * rate;
+  const id = Math.floor(cyc);
+  const frac = cyc - id;
+  const tA = frac / rate;
+  const xA = 0.28 + 0.14 * hash(id * 5.9 + 1.3);
+  let tB = 0;
+  let xB = 0;
+  if (double) {
+    const halfId = frac >= 0.5 ? id : id - 1;
+    tB = (frac >= 0.5 ? frac - 0.5 : frac + 0.5) / rate;
+    xB = 0.58 + 0.14 * hash(halfId * 7.3 + 2.9);
+  }
+  const cells = [];
+  for (let i = 0; i < BAR_CELLS; i++) {
+    if (i < filled) {
+      const x = i / W;
+      let uA = 0;
+      let uB = 0;
+      for (let m = 0; m < 12; m++) {
+        const n = m + 1;
+        const basis = Math.cos(Math.PI * n * x);
+        const w = w0 * Math.sqrt(n);
+        uA += A[m] * Math.cos(Math.PI * n * xA) * basis * Math.cos(w * tA);
+        if (double) uA += A[m] * Math.cos(Math.PI * n * xB) * basis * Math.cos(w * tB);
+        uB += A[m] * Math.cos(Math.PI * n * xA) * basis * Math.cos(w * (tA - lag));
+        if (double) uB += A[m] * Math.cos(Math.PI * n * xB) * basis * Math.cos(w * (tB - lag));
+      }
+      const mk = (u) => {
+        let v = u + 0.3 * u * u;
+        v += 0.03 * Math.sin((x * 2.5 + T * 0.1) * Math.PI * 2);
+        v += 0.02 * Math.sin((x * 4.5 - T * 0.14) * Math.PI * 2);
+        return clamp(0.5 + v * 0.6, 0, 1);
+      };
+      const h = mk((uA / norm) * gain);
+      const hLag = mk((uB / norm) * gain);
+      cells.push(waterPixel(h, hLag, i, T, foamAt, spray));
+    } else {
+      cells.push({ g: "\u2581", fg: slot(C) });
+    }
+  }
+  return cells;
+}
+function barDrop(pct, phase, C) {
+  return dropRender(pct, phase, C, false, 0.016, 0.6, 0.26, 0.6, 0.18, 9);
+}
+function barCross(pct, phase, C) {
+  return dropRender(pct, phase, C, true, 0.013, 0.5, 0.26, 0.62, 0.15, 9);
+}
+function barPendulum(pct, phase, C) {
+  const T = phase * SPEED;
+  const filled = Math.round((pct / 100) * BAR_CELLS);
+  const deep = mix(C, DARK, 0.6);
+  const bright = mix(C, "#ffffff", 0.55);
+  const cells = [];
+  for (let i = 0; i < BAR_CELLS; i++) {
+    if (i < filled) {
+      const w = 0.22 + i * 0.022;
+      const h = 0.5 + 0.5 * Math.sin(Math.PI / 2 + T * w);
+      const lvl = clamp(Math.round(2 + h * 6), 2, 8);
+      cells.push({ g: EIGHTHS[lvl - 1], fg: mix(deep, bright, (lvl - 2) / 6) });
+    } else {
+      cells.push({ g: "\u2581", fg: slot(C) });
+    }
+  }
+  return cells;
+}
+// (water suite: ocean / seiche / ripples / collision — all on the 2-pixel renderer)
+// (the wave-tank engine above powers ocean / seiche / chop / storm)
+const DESIGNS = {
+  wave: barWave, comet: barComet, battery: barBattery, eq: barEq, gradient: barGradient,
+  radar: barRadar, loader: barLoader, chevron: barChevron, aurora: barAurora, signal: barSignal,
+  scanner: barScanner, inchworm: barInchworm, string: barString, ripples: barRipples, pulse: barPulse,
+  duet: barDuet, neon: barNeon, hopper: barHopper, stream: barStream, quake: barQuake,
+  pacman: barPacman, matrix: barMatrix, hearts: barHearts, pokehp: barPokehp, tetris: barTetris,
+  rings: barRings, amongus: barAmongus,
+  ocean: barOcean, seiche: barSeiche, pendulum: barPendulum, drop: barDrop, cross: barCross,
+};
+
+// ============================================================================
+// card rendering (same cell-grid technique as the sidebar)
+// ============================================================================
+const CARD_W = 36, CONTENT_W = 32, CONTENT_X = 2;
+const WINDOWS = [
+  { name: "5h", percent: 95, mode: "left", time: "4h 11m" },
+  { name: "Weekly", percent: 37, mode: "left", time: "1d 15h 3m" },
+  { name: "Monthly", percent: 68, mode: "left", time: "24d 8h 9m" },
+];
+
+function padRight(s, n) { return s.length >= n ? s : s + " ".repeat(n - s.length); }
+function padLeft(s, n) { return s.length >= n ? s : " ".repeat(n - s.length) + s; }
+function classicNameTimeLine(name, time, maxWidth, sep, prefTime) {
+  if (!time) return name.slice(0, maxWidth);
+  let timeWidth = Math.max(time.length, prefTime);
+  const preferredNameWidth = maxWidth - sep.length - timeWidth;
+  if (name.length > preferredNameWidth && name.length + sep.length + time.length <= maxWidth) timeWidth = time.length;
+  const nameWidth = Math.max(1, maxWidth - sep.length - timeWidth);
+  return (padRight(name, nameWidth) + sep + padLeft(time, timeWidth)).slice(0, maxWidth);
+}
+
+function buildCard(design) {
+  const rows = [];
+  const mk = () => Array.from({ length: CARD_W }, () => ({ c: " " }));
+  const put = (row, textValue, at, style) => {
+    const chars = Array.from(textValue);
+    for (let i = 0; i < chars.length && at + i < CARD_W; i++) row[at + i] = { c: chars[i], ...style };
+  };
+  const putCells = (row, cells, at) => {
+    for (let i = 0; i < cells.length && at + i < CARD_W; i++) {
+      const cell = cells[i];
+      if (cell.g === " " && !cell.fg) continue;
+      row[at + i] = { c: cell.g, fg: cell.fg, bg: cell.bg };
+    }
+  };
+  const borderStyle = { fg: THEME.border };
+  const side = (row) => {
+    put(row, "\u2502", 0, borderStyle);
+    put(row, "\u2502", CARD_W - 1, borderStyle);
+    return row;
+  };
+
+  const top = mk();
+  put(top, "\u256D" + "\u2500".repeat(CARD_W - 2) + "\u256E", 0, borderStyle);
+  rows.push(top);
+  const head = mk();
+  put(head, "\u2502", 0, borderStyle);
+  put(head, "\u2502", CARD_W - 1, borderStyle);
+  put(head, "\u25BC Quota", CONTENT_X, { fg: THEME.textBase });
+  rows.push(head);
+  const group = mk();
+  put(group, "[OpenCode Go]", CONTENT_X, { fg: THEME.textBase, b: true });
+  rows.push(side(group));
+
+  for (const win of WINDOWS) {
+    const C = bucketColor(win.percent, win.mode);
+    // name row: name left, countdown right (real formatter layout)
+    const nameLine = classicNameTimeLine(win.name, win.time, CONTENT_W, "  ", 7);
+    const nameRow = mk();
+    const tailRe = /^(.*?)(\s+)((?:\d+(?:\.\d+)?[dhms]\s*)+)\s*$/u;
+    const tail = tailRe.exec(nameLine);
+    if (tail) {
+      if (tail[1]) put(nameRow, tail[1], CONTENT_X, { fg: THEME.muted });
+      put(nameRow, tail[2], CONTENT_X + tail[1].length, { fg: THEME.muted });
+      put(nameRow, tail[3].trimEnd(), CONTENT_X + tail[1].length + tail[2].length, { fg: THEME.accent });
+    } else {
+      put(nameRow, nameLine, CONTENT_X, { fg: THEME.muted });
+    }
+    rows.push(side(nameRow));
+
+    // bar row: cells + 2 + label
+    const barRow = mk();
+    putCells(barRow, DESIGNS[design](win.percent, phase, C), CONTENT_X);
+    const label = `${Math.round(win.percent)}% ${win.mode === "used" ? "used" : "left"}`.padStart(9);
+    const parts = label.match(/^(\s*)(\d+%)(\s.*)?$/u);
+    const labelX = CONTENT_X + BAR_CELLS + 2;
+    if (parts) {
+      if (parts[1]) put(barRow, parts[1], labelX, { fg: THEME.muted });
+      put(barRow, parts[2], labelX + (parts[1] || "").length, { fg: C });
+      if (parts[3]) put(barRow, parts[3], labelX + (parts[1] || "").length + parts[2].length, { fg: THEME.muted });
+    } else {
+      put(barRow, label, labelX, { fg: THEME.muted });
+    }
+    rows.push(side(barRow));
+  }
+
+  const heading = mk();
+  put(heading, "Session input/output tokens", CONTENT_X, { fg: THEME.textBase });
+  rows.push(side(heading));
+  const model = mk();
+  put(model, "  claude-sonnet-4-20250514", CONTENT_X, { fg: THEME.muted });
+  rows.push(side(model));
+  const counts = mk();
+  put(counts, "    1.0M (200K) in  300K out", CONTENT_X, { fg: THEME.muted });
+  rows.push(side(counts));
+
+  const bottom = mk();
+  put(bottom, "\u2570" + "\u2500".repeat(CARD_W - 2) + "\u256F", 0, borderStyle);
+  rows.push(bottom);
+  return rows;
+}
+
+// ---------------------------------------------------------------------------
+let phase = 0;
+let cwMeasured = 0;
+let chMeasured = 0;
+function measureCells() {
+  const ctx = document.createElement("canvas").getContext("2d");
+  ctx.font = `16px 'Cascadia Mono', Consolas, monospace`;
+  const m = ctx.measureText("\u2588");
+  cwMeasured = m.width > 0 ? m.width : 9.6;
+  chMeasured = (m.actualBoundingBoxAscent ?? 0) + (m.actualBoundingBoxDescent ?? 0);
+  if (!(chMeasured > 0)) chMeasured = 19.7;
+}
+function esc(s) { return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
+const cardEls = {};
+function rowHtmlFor(row) {
+  let out = "";
+  for (const cell of row) {
+    const styles = [];
+    if (cell.fg) styles.push(`color:${cell.fg}`);
+    if (cell.bg) styles.push(`background-color:${cell.bg}`);
+    if (cell.b) styles.push("font-weight:700");
+    out += styles.length ? `<span class="c" style="${styles.join(";")}">${esc(cell.c)}</span>` : `<span class="c">${esc(cell.c)}</span>`;
+  }
+  return out;
+}
+function renderCard(id, design) {
+  const state = cardEls[id];
+  const el = state.el;
+  el.style.setProperty("--cw", `${cwMeasured}px`);
+  el.style.setProperty("--ch", `${chMeasured}px`);
+  const rows = buildCard(design);
+  if (state.rowEls.length !== rows.length) {
+    el.innerHTML = "";
+    state.rowEls = [];
+    state.cache = [];
+    for (let r = 0; r < rows.length; r++) {
+      const d = document.createElement("div");
+      d.className = "r";
+      el.appendChild(d);
+      state.rowEls.push(d);
+      state.cache.push(null);
+    }
+  }
+  for (let r = 0; r < rows.length; r++) {
+    const html = rowHtmlFor(rows[r]);
+    if (state.cache[r] !== html) {
+      state.rowEls[r].innerHTML = html;
+      state.cache[r] = html;
+    }
+  }
+}
+
+const CARDS = {
+  cardWave: "wave", cardComet: "comet", cardBattery: "battery", cardEq: "eq", cardGradient: "gradient",
+  cardRadar: "radar", cardLoader: "loader", cardChevron: "chevron", cardAurora: "aurora", cardSignal: "signal",
+  cardScanner: "scanner", cardInchworm: "inchworm", cardString: "string", cardRipples: "ripples", cardPulse: "pulse",
+  cardDuet: "duet", cardNeon: "neon", cardHopper: "hopper", cardStream: "stream", cardQuake: "quake",
+  cardPacman: "pacman", cardMatrix: "matrix", cardHearts: "hearts", cardPokehp: "pokehp", cardTetris: "tetris",
+  cardRings: "rings", cardAmongus: "amongus",
+  cardOcean: "ocean", cardSeiche: "seiche", cardPendulum: "pendulum", cardDrop: "drop", cardCross: "cross",
+};
+for (const [id, design] of Object.entries(CARDS)) cardEls[id] = { el: document.getElementById(id), rowEls: [], cache: [] };
+document.getElementById("grid").addEventListener("change", (e) => {
+  for (const state of Object.values(cardEls)) state.el.classList.toggle("grid", e.target.checked);
+});
+
+function frame() {
+  phase = (phase + 1) % 100000;
+  for (const [id, design] of Object.entries(CARDS)) renderCard(id, design);
+}
+measureCells();
+if (document.fonts && document.fonts.ready) {
+  document.fonts.ready.then(() => { measureCells(); frame(); }).catch(() => {});
+}
+frame();
+setInterval(frame, 120);
+</script>
+</body>
+</html>

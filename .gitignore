@@ -1,0 +1,6 @@
+# installed dependencies (OpenCode reinstalls them from package.json)
+node_modules/
+
+# machine-specific secret: OpenCode remote-access password
+service.json
+

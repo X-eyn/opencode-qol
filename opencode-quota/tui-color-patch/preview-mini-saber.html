@@ -1,0 +1,291 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>New mini saber — designed for the 2-row size (approval mock)</title>
+<style>
+  :root { --cw: 8.4px; --ch: 24px; --fs: 16px; --font: 'Cascadia Mono', Consolas, 'JetBrains Mono', monospace; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body { background: #101010; color: #cfcfcf; font-family: 'Segoe UI', system-ui, sans-serif; font-size: 13px; padding: 22px 22px 60px; }
+  h1 { font-size: 18px; margin: 0 0 6px; }
+  .intro { color: #8b8b8b; font-size: 13px; line-height: 1.65; max-width: 1100px; margin-bottom: 18px; }
+  .intro b { color: #EC5B2B; }
+  .cards { display: flex; gap: 26px; flex-wrap: wrap; align-items: flex-start; }
+  .variant h3 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.07em; color: #EC5B2B; margin: 0 0 8px; }
+  .variant .note { color: #6f6f6f; font-size: 11.5px; margin: 0 0 8px; max-width: 480px; line-height: 1.5; }
+  .cardOuter { padding: 18px 24px; background: #0a0a0a; border-radius: 6px; display: inline-block; }
+  .card { display: flex; flex-direction: column; }
+  .r { display: flex; }
+  .c { flex: 0 0 var(--cw); height: var(--ch); line-height: var(--ch); font-family: var(--font); font-size: var(--fs); white-space: pre; overflow: hidden; }
+  .c.b { font-weight: 700; }
+  .card.grid .c { box-shadow: inset 0 0 0 1px rgba(255,255,255,0.07); }
+  .toolbar { margin: 0 0 16px; color: #8b8b8b; font-size: 12.5px; }
+  .toolbar input { accent-color: #EC5B2B; }
+</style>
+</head>
+<body>
+
+<h1>New mini saber — designed for the 2-row size</h1>
+<p class="intro">
+  This is a <b>new design drawn for 2 rows</b>, not a shrunken copy — so every detail is a full or half
+  cell (button = a whole cell, pommel = a whole cell, blade = clean half-band cells). Nothing can melt or
+  go sub-pixel. Rendered with the exact same cell grid as your sidebar.
+  Pick a variant (or ask for tweaks — hilt colors, button position, width… all are single values).
+</p>
+<div class="toolbar">
+  <label><input id="grid" type="checkbox"> show pixel cells</label>
+</div>
+
+<div class="cards">
+  <section class="variant">
+    <h3>A — classic hilt · 14 cells</h3>
+    <p class="note">Full-height metal hilt: dark pommel, grey grip, green button cell, bright emitter. Blade = glowing rod with dark rims + hot tip.</p>
+    <div class="cardOuter"><div class="card" id="cardA"></div></div>
+  </section>
+  <section class="variant">
+    <h3>B — slim hilt · 14 cells</h3>
+    <p class="note">Same blade; hilt is a slim mid-band (pommel/grip/button sit on the core line), with a full-height emitter flare.</p>
+    <div class="cardOuter"><div class="card" id="cardB"></div></div>
+  </section>
+  <section class="variant">
+    <h3>A at 16 cells (a bit more blade)</h3>
+    <p class="note">Same design family, longer track — one empty cell at 95% keeps the reading honest.</p>
+    <div class="cardOuter"><div class="card" id="cardA16"></div></div>
+  </section>
+</div>
+
+<script>
+"use strict";
+// ============================================================================
+// EXACT DESIGN SPEC — this generator is what will be ported 1:1 into the
+// sidebar plugin. Cells only: every entry is a full cell {g, fg, bg}.
+// ============================================================================
+const THEME = {
+  textBase: "#eeeeee", muted: "#808080", accent: "#EC5B2B",
+  success: "#6ba1e6", warning: "#EC5B2B", error: "#e06c75",
+  border: "#EC5B2B", pageBg: "#0a0a0a",
+};
+const DARK = "#0f0d0b";
+const SPEED = 2.25;
+
+function hexToInts(hex) {
+  const h = hex.replace("#", "");
+  return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)];
+}
+function intsToHex(ints) {
+  return "#" + ints.map((v) => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, "0")).join("");
+}
+function mix(a, b, t) {
+  const x = hexToInts(a), y = hexToInts(b);
+  return intsToHex(x.map((v, i) => v + (y[i] - v) * t));
+}
+function scale(hex, f) {
+  return intsToHex(hexToInts(hex).map((v) => v * f));
+}
+function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
+function bucketColor(pct, mode) {
+  const remaining = mode === "used" ? 100 - pct : pct;
+  return remaining < 30 ? THEME.error : remaining < 70 ? THEME.warning : THEME.success;
+}
+
+// ---------------------------------------------------------------------------
+// THE NEW SABER — cell-level artwork, 2 rows. Variant "classic" | "slim".
+// Returns { r1: [cells], r2: [cells] } where cell = {g, fg, bg?} or {g:" "} (transparent).
+// ---------------------------------------------------------------------------
+function miniSaber(variant, width, percent, mode, phase) {
+  const pct = clamp(Number(percent) || 0, 0, 100);
+  const bucket = bucketColor(Math.round(pct), mode);
+  const T = phase * SPEED;
+  const core = mix(bucket, "#ffffff", 0.85);
+  const coreTip = mix(bucket, "#ffffff", 0.95);
+  const rim = mix(bucket, DARK, 0.72);
+
+  const pulse = 0.75 + 0.25 * Math.sin(T * 0.25);
+  const green = mix("#4dff88", "#ffffff", 0.25 * pulse);
+  const greenDeep = mix("#4dff88", DARK, 0.35);
+
+  const track = Math.max(1, width - 4);
+  const len = pct <= 0 ? 0 : Math.max(1, Math.min(track, Math.floor((pct / 100) * track + 1e-9)));
+
+  const r1 = [];
+  const r2 = [];
+  const blank = { g: " " };
+
+  for (let i = 0; i < width; i++) {
+    if (i < 4) {
+      // ---- hilt (4 cells: pommel, grip, button, emitter) ----
+      if (variant === "slim") {
+        if (i === 0) { r1.push({ g: "▄", fg: "#4a4a4a" }); r2.push({ g: "▀", fg: "#3c3c3c" }); continue; }
+        if (i === 1) { r1.push({ g: "▄", fg: "#5c5c5c" }); r2.push({ g: "▀", fg: "#4a4a4a" }); continue; }
+        if (i === 2) { r1.push({ g: "▄", fg: green }); r2.push({ g: "▀", fg: green }); continue; }
+        r1.push({ g: "█", fg: "#8f8f8f" }); r2.push({ g: "█", fg: "#6b6b6b" });
+        continue;
+      }
+      if (i === 0) { r1.push({ g: "█", fg: "#454545" }); r2.push({ g: "█", fg: "#363636" }); continue; }
+      if (i === 1) { r1.push({ g: "█", fg: "#5c5c5c" }); r2.push({ g: "█", fg: "#4a4a4a" }); continue; }
+      if (i === 2) { r1.push({ g: "▀", fg: green, bg: greenDeep }); r2.push({ g: "█", fg: "#4a4a4a" }); continue; }
+      r1.push({ g: "█", fg: "#949494" }); r2.push({ g: "█", fg: "#6c6c6c" });
+      continue;
+    }
+    // ---- blade ----
+    const bladeIndex = i - 4;
+    if (bladeIndex >= len) { r1.push(blank); r2.push(blank); continue; }
+    const shimmer = clamp(1 + 0.06 * Math.sin(i * 0.9 - T * 0.6) + 0.045 * Math.sin(i * 0.33 + T * 0.37), 0.9, 1.1);
+    const coreShimmer = scale(core, shimmer);
+    if (bladeIndex === len - 1) {
+      r1.push({ g: "█", fg: coreTip });
+      r2.push({ g: "█", fg: coreTip });
+      continue;
+    }
+    r1.push({ g: "▀", fg: rim, bg: coreShimmer });
+    r2.push({ g: "▀", fg: coreShimmer, bg: rim });
+  }
+  return { r1, r2 };
+}
+
+// ---------------------------------------------------------------------------
+// card rendering (same cell-grid technique as the main playground)
+// ---------------------------------------------------------------------------
+const CARD_W = 36, CONTENT_W = 32, CONTENT_X = 2;
+
+function padRight(s, n) { return s.length >= n ? s : s + " ".repeat(n - s.length); }
+function padLeft(s, n) { return s.length >= n ? s : " ".repeat(n - s.length) + s; }
+
+const WINDOWS = [
+  { name: "5h", percent: 95, mode: "left", time: "4h 11m" },
+  { name: "Weekly", percent: 37, mode: "left", time: "1d 15h 3m" },
+  { name: "Monthly", percent: 68, mode: "left", time: "24d 8h 9m" },
+];
+
+function buildCard(variant, drawCells) {
+  const theme = THEME;
+  const rows = [];
+  const mk = () => Array.from({ length: CARD_W }, () => ({ c: " " }));
+  const put = (row, text, at, style) => {
+    const chars = Array.from(text);
+    for (let i = 0; i < chars.length && at + i < CARD_W; i++) row[at + i] = { c: chars[i], ...style };
+  };
+  const putCells = (row, cells, at) => {
+    for (let i = 0; i < cells.length && at + i < CARD_W; i++) {
+      const cell = cells[i];
+      if (cell.g === " " && !cell.fg) continue;
+      row[at + i] = { c: cell.g, fg: cell.fg, bg: cell.bg };
+    }
+  };
+  const borderStyle = { fg: theme.border };
+  const side = (row) => {
+    put(row, "\u2502", 0, borderStyle);
+    put(row, "\u2502", CARD_W - 1, borderStyle);
+    return row;
+  };
+
+  const top = mk();
+  put(top, "\u256D" + "\u2500".repeat(CARD_W - 2) + "\u256E", 0, borderStyle);
+  rows.push(top);
+  const head = mk();
+  put(head, "\u2502", 0, borderStyle);
+  put(head, "\u2502", CARD_W - 1, borderStyle);
+  put(head, "\u25BC Quota", CONTENT_X, { fg: theme.textBase });
+  rows.push(head);
+  const group = mk();
+  put(group, "[OpenCode Go]", CONTENT_X, { fg: theme.textBase, b: true });
+  rows.push(side(group));
+
+  for (const win of WINDOWS) {
+    const art = miniSaber(variant, drawCells, win.percent, win.mode, phase);
+    const label = `${Math.round(win.percent)}% ${win.mode === "used" ? "used" : "left"}`.padStart(9);
+    const parts = label.match(/^(\s*)(\d+%)(\s.*)?$/u);
+    const pctColor = bucketColor(win.percent, win.mode);
+    const nameWidth = Math.max(0, CONTENT_W - drawCells - 9);
+
+    const row1 = mk();
+    putCells(row1, art.r1, CONTENT_X);
+    put(row1, padRight(win.name.slice(0, nameWidth), nameWidth), CONTENT_X + drawCells, { fg: theme.muted });
+    const labelX = CONTENT_X + drawCells + nameWidth;
+    if (parts) {
+      if (parts[1]) put(row1, parts[1], labelX, { fg: theme.muted });
+      put(row1, parts[2], labelX + (parts[1] || "").length, { fg: pctColor });
+      if (parts[3]) put(row1, parts[3], labelX + (parts[1] || "").length + parts[2].length, { fg: theme.muted });
+    } else {
+      put(row1, label, labelX, { fg: theme.muted });
+    }
+    rows.push(side(row1));
+
+    const row2 = mk();
+    putCells(row2, art.r2, CONTENT_X);
+    put(row2, padLeft(win.time.slice(0, CONTENT_W - drawCells), CONTENT_W - drawCells), CONTENT_X + drawCells, { fg: theme.accent });
+    rows.push(side(row2));
+  }
+
+  const heading = mk();
+  put(heading, "Session input/output tokens", CONTENT_X, { fg: theme.textBase });
+  rows.push(side(heading));
+  const model = mk();
+  put(model, "  claude-sonnet-4-20250514", CONTENT_X, { fg: theme.muted });
+  rows.push(side(model));
+  const counts = mk();
+  put(counts, "    1.0M (200K) in  300K out", CONTENT_X, { fg: theme.muted });
+  rows.push(side(counts));
+
+  const bottom = mk();
+  put(bottom, "\u2570" + "\u2500".repeat(CARD_W - 2) + "\u256F", 0, borderStyle);
+  rows.push(bottom);
+  return rows;
+}
+
+// ---------------------------------------------------------------------------
+// DOM
+// ---------------------------------------------------------------------------
+let phase = 0;
+let cwMeasured = 0;
+let chMeasured = 0;
+function measureCells() {
+  const ctx = document.createElement("canvas").getContext("2d");
+  ctx.font = `16px 'Cascadia Mono', Consolas, monospace`;
+  const m = ctx.measureText("\u2588");
+  cwMeasured = m.width > 0 ? m.width : 9.6;
+  chMeasured = (m.actualBoundingBoxAscent ?? 0) + (m.actualBoundingBoxDescent ?? 0);
+  if (!(chMeasured > 0)) chMeasured = 19.7;
+}
+function esc(s) { return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
+
+function renderCard(el, variant, drawCells) {
+  el.style.setProperty("--cw", `${cwMeasured}px`);
+  el.style.setProperty("--ch", `${chMeasured}px`);
+  const rows = buildCard(variant, drawCells);
+  el.innerHTML = rows.map((row) => {
+    let out = '<div class="r">';
+    for (const cell of row) {
+      const styles = [];
+      if (cell.fg) styles.push(`color:${cell.fg}`);
+      if (cell.bg) styles.push(`background-color:${cell.bg}`);
+      if (cell.b) styles.push("font-weight:700");
+      out += styles.length ? `<span class="c" style="${styles.join(";")}">${esc(cell.c)}</span>` : `<span class="c">${esc(cell.c)}</span>`;
+    }
+    return out + "</div>";
+  }).join("");
+}
+
+const cardA = document.getElementById("cardA");
+const cardB = document.getElementById("cardB");
+const cardA16 = document.getElementById("cardA16");
+document.getElementById("grid").addEventListener("change", (e) => {
+  for (const el of [cardA, cardB, cardA16]) el.classList.toggle("grid", e.target.checked);
+});
+
+function frame() {
+  phase = (phase + 1) % 100000;
+  renderCard(cardA, "classic", 14);
+  renderCard(cardB, "slim", 14);
+  renderCard(cardA16, "classic", 16);
+}
+measureCells();
+if (document.fonts && document.fonts.ready) {
+  document.fonts.ready.then(() => { measureCells(); frame(); }).catch(() => {});
+}
+frame();
+setInterval(frame, 120);
+</script>
+</body>
+</html>
