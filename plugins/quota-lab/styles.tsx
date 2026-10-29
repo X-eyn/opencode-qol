@@ -32,6 +32,13 @@ export const STYLES: BarStyle[] = [
     create: (W, H, seed) => new RetroTankScene(W, H, seed),
   },
   {
+    id: "retro-seawall",
+    title: "Sea Wall · 8-bit",
+    description: "The storm sea with no beach: waves slam into the quota line",
+    kind: "pixel",
+    create: (W, H, seed) => new RetroTankScene(W, H, seed, true),
+  },
+  {
     id: "retro-snake",
     title: "Pocket Snake · 8-bit",
     description: "Handheld-green snake, its length is your remaining quota",

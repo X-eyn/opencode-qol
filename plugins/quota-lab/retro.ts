@@ -40,6 +40,8 @@ const SAND_WET = [[178, 140, 84], [146, 110, 62]]
 const SAND_SUB = [[150, 206, 168], [86, 178, 160]] // sand seen through shallow water
 const FISH = [[255, 150, 70], [255, 210, 120]]
 const GLINT = [255, 244, 214]
+const WALL = [[150, 160, 172], [112, 121, 134], [80, 88, 100]] // lit face, body, shadow
+const WALL_WET = [[86, 104, 112], [60, 74, 84]]
 
 function clamp(v: number, a: number, b: number) {
   return v < a ? a : v > b ? b : v
@@ -69,13 +71,17 @@ export class RetroTankScene {
   private readonly gb: Uint8Array
   private readonly painted: Uint8Array // 1 where something was painted
 
-  constructor(W: number, H: number, seed = 1) {
+  private readonly wall: boolean
+
+  // wall = true: no beach - the quota line is a solid sea wall the waves slam into
+  constructor(W: number, H: number, seed = 1, wall = false) {
+    this.wall = wall
     this.W = W
     this.H = H
     this.VW = Math.max(8, Math.floor(W / P))
     this.VH = Math.max(4, Math.floor(H / P))
     this.seed = seed
-    this.surf = new Surf(this.VW, this.VH, seed)
+    this.surf = new Surf(this.VW, this.VH, seed, wall)
     this.nextFish = 5 + hash2(seed, 1) * 8
     const n = this.VW * this.VH
     this.gr = new Uint8Array(n)
@@ -89,7 +95,9 @@ export class RetroTankScene {
   }
   setPercent(pct: number) {
     this.pct = clamp(pct, 0, 100)
-    this.surf.setShore((this.pct / 100) * this.VW)
+    // a sea wall is 2 px thick and always stays on the canvas
+    const xs = (this.pct / 100) * this.VW
+    this.surf.setShore(this.wall ? Math.min(Math.round(xs), this.VW - 2) : xs)
   }
   handover(prev: unknown) {
     const p = prev as RetroTankScene
@@ -159,6 +167,19 @@ export class RetroTankScene {
     this.painted.fill(0)
     const row = (up: number) => VH - 1 - up // pixel row for "up" pixels above the floor
     for (let x = 0; x < VW; x++) {
+      if (this.wall && x >= s.xs) {
+        // the sea wall: a lit face and a shadowed back, darkened where the
+        // sea has wetted it; past it the spent quota is empty
+        const k0 = x - s.xs
+        if (k0 > 1) continue
+        for (let k = 0; k < VH; k++) {
+          const vy = row(k)
+          const wet = k + 0.5 < s.wallWet
+          const col = wet ? this.dither(WALL_WET, k0 === 0 ? 0.3 : 0.9, x, vy) : this.dither(WALL, k0 === 0 ? (k === VH - 1 ? 0 : 0.5) : 1.6, x, vy)
+          this.paint(x, vy, col)
+        }
+        continue
+      }
       const zb = s.z[x]
       const hh = s.h[x]
       const sandTop = Math.max(0, Math.round(zb)) // sand pixels [0, sandTop)
@@ -237,6 +258,21 @@ export class RetroTankScene {
         const tip = k > n - 4
         this.paint(x, row(up), tip ? FOAM : this.dither(WATER, 4.4, x, row(up)))
         if (k < n * 0.5) this.paint(x, row(up + 1), this.dither([WATER[4], FOAM], 0.5, x, row(up + 1))) // thick near the crest
+      }
+    }
+    // ---- up-rush sheets climbing the wall face: a thin white sheet hugging
+    // the wall, thicker and greener near its root
+    if (this.wall && s.xs > 0) {
+      const x = s.xs - 1
+      for (const j of s.wallJets) {
+        const tt = s.t - j.t0
+        const top = j.y0 + j.v0 * tt - 0.5 * s.g * tt * tt
+        const base = Math.round(s.surface(x))
+        for (let k = base; k < Math.round(top); k++) {
+          const vy = row(k)
+          this.paint(x, vy, k < base + 1 ? this.dither([WATER[4], FOAM], 0.5, x, vy) : FOAM)
+          if (k < base + (top - base) * 0.7) this.paint(x - 1, vy, this.dither([WATER[5], FOAM], 0.6, x - 1, vy))
+        }
       }
     }
     // ---- spray drops

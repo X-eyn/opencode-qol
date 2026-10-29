@@ -36,6 +36,11 @@
 //                throws a splash-up at ~ sqrt(2 g H) (Peregrine 1983).
 //   Wind         A strong onshore wind (storm sea): drag pulls spray landward
 //                and tears spindrift off steep crests before they break.
+//   Sea wall     Optional (wall = true): no beach, a flat bed and a solid
+//                vertical wall at the quota line. Waves reflect into standing
+//                clapotis; each slam throws a vertical jet at
+//                v = sqrt(2 g rise + u^2) (rise plus stagnation head), and drops
+//                hitting the wall bounce off it with restitution.
 //   Spray        Ballistic drops (gravity + air drag + wind) thrown by plunging
 //                lips, splash-ups, rollers, swash fronts and wall slams; they
 //                land as foam or wet sand.
@@ -44,6 +49,7 @@ const G = 120 // gravity in virtual px / s^2 (deep celerity ~ 24 px/s)
 const DRY = 0.015 // water thinner than this is dry
 const CF = 0.02 // quadratic bed friction
 const MAX_DROPS = 320
+const VH_SOLID = (VH: number) => VH + 6 // wall top, above anything the sea can reach
 const WIND = 14 // onshore wind speed (px/s)
 
 function clamp(v: number, a: number, b: number) {
@@ -85,6 +91,14 @@ export class Surf {
   readonly lace: Float32Array // foam stranded on the sand by the swash
   readonly drops: Drop[] = []
   readonly plunges: Plunge[] = []
+  wallWet = 0 // how high the wall is wet (px above the floor)
+  // up-rush sheets climbing the wall face after a slam: y(t) = y0 + v0 t - g t^2 / 2
+  readonly wallJets: { t0: number; y0: number; v0: number }[] = []
+  private wallPrevRise = 0
+  private wallLast = -9
+  private wallRising = false
+  private wallInflow = 0
+  readonly wall: boolean
   xs = -1 // shoreline cell (water occupies [0, xs) at still level)
   t = 0
   private readonly rnd: () => number
@@ -103,10 +117,13 @@ export class Surf {
   private readonly disp: Uint8Array // dispersion active per cell
   private readonly onset: Float32Array
 
-  constructor(N: number, VH: number, seed: number) {
+  constructor(N: number, VH: number, seed: number, wall = false) {
+    this.wall = wall
     this.N = N
     this.VH = VH
-    this.SL = VH * 0.6
+    // a sea wall doubles every crest (standing clapotis) and throws sheets
+    // above it: it needs a lower still level for headroom
+    this.SL = VH * (wall ? 0.46 : 0.6)
     this.D0 = this.SL - 0.2
     const f = () => new Float32Array(N)
     this.z = f()
@@ -141,7 +158,7 @@ export class Surf {
   private spectrum(seed: number) {
     const r = mulberry(seed * 977 + 5)
     const Tp = 3.0 // long-period storm swell: high Ursell number, peaked cnoidal crests
-    const Hs = this.VH * 0.38
+    const Hs = this.VH * (this.wall ? 0.3 : 0.38)
     const fp = 1 / Tp
     const n = 16
     const comps: { f: number; s: number }[] = []
@@ -202,7 +219,8 @@ export class Surf {
     const tanB = 0.13 // beach face slope
     for (let i = 0; i < N; i++) {
       const s = xs - (i + 0.5) // distance seaward of the still shoreline
-      if (xs >= N) z[i] = SL - D0 // no beach: a flat-bottomed tank with a wall
+      if (this.wall) z[i] = i < xs ? SL - D0 : VH_SOLID(this.VH) // sea wall: flat bed, solid wall
+      else if (xs >= N) z[i] = SL - D0 // no beach: a flat-bottomed tank with a wall
       else if (s > 0) {
         z[i] = SL - Math.min(D0, A * (Math.pow(s + s0, 2 / 3) - Math.pow(s0, 2 / 3)) + 0.12)
         // a longshore sandbar halfway out the surf zone: the big set waves
@@ -517,14 +535,59 @@ export class Surf {
       lace[i] *= Math.exp(-dt / 2.5)
     }
     // wall slam with no beach: rising water at the wall throws a jet
-    if (this.xs >= N && h[N - 1] > DRY) {
-      const i = N - 1
+    const wi = this.wall ? this.xs - 1 : this.xs >= N ? N - 1 : -1
+    if (wi >= 1 && h[wi] > DRY) {
+      const i = wi
       const rise = z[i] + h[i] - SL
-      if (rise > 0.8 && etaT[i] > 2 && rnd() < 30 * dt * Math.min(1, rise / 2)) {
-        this.drop(i - rnd() * 2, z[i] + h[i], -2 - rnd() * 6, Math.sqrt(2 * G * rise) * (0.7 + rnd() * 0.5), rnd() < 0.4)
+      const u = Math.max(0, this.u(i - 1)) // flow driven into the wall
+      if (rise > 0.6 && etaT[i] > 1.5 && rnd() < (this.wall ? 45 : 30) * dt * Math.min(1, rise / 2)) {
+        // the jet: rise plus stagnation head, v = sqrt(2 g rise + u^2)
+        const v = Math.sqrt(2 * G * rise + u * u)
+        this.drop(i + 0.6 - rnd() * 1.5, z[i] + h[i], -1 - rnd() * 5, v * (0.6 + rnd() * 0.6), rnd() < 0.4)
         foam[i] = Math.min(2, foam[i] + 0.3)
         foam[i - 1] = Math.min(2, foam[i - 1] + 0.2)
+        this.air[i] = Math.min(1.5, this.air[i] + 0.3)
       }
+    }
+    if (this.wall && wi >= 1 && h[wi] > DRY) {
+      // a crest arriving at the wall: flip-through. The trough ahead and the
+      // crest converge on the wall and the water is squeezed into a sheet that
+      // shoots up the face, much faster than the wave itself (Peregrine 2003);
+      // modelled as a ballistic sheet launched at k * sqrt(2 g rise + u^2)
+      const rise = z[wi] + h[wi] - SL
+      this.wallInflow = Math.max(this.wallInflow * Math.exp(-dt / 0.6), Math.max(0, this.u(wi - 1)))
+      // launch when the water at the wall peaks: the moment of flip-through
+      if (this.wallPrevRise > rise && this.wallPrevRise > 0.7 && this.wallRising && this.t - this.wallLast > 0.7) {
+        const v0 = 1.8 * Math.sqrt(2 * G * this.wallPrevRise + this.wallInflow * this.wallInflow)
+        // (capped where the sheet would leave the sky for good: it then hangs too long)
+        const y0 = z[wi] + h[wi]
+        const v0c = Math.min(v0, Math.sqrt(2 * G * Math.max(0.5, this.VH + 3 - y0)))
+        this.wallJets.push({ t0: this.t, y0, v0: v0c })
+        this.wallLast = this.t
+        // the impact itself bursts into spray off the top of the crest
+        for (let m = 0; m < 4; m++) this.drop(wi + 0.5 - rnd(), z[wi] + h[wi] + 0.3, -2 - rnd() * 8, v0c * (0.3 + rnd() * 0.4), rnd() < 0.5)
+      }
+      this.wallRising = rise > this.wallPrevRise
+      this.wallPrevRise = rise
+    }
+    // advance the sheets: they climb, stall, and shed drops as they collapse
+    for (let k = this.wallJets.length - 1; k >= 0; k--) {
+      const j = this.wallJets[k]
+      const tt = this.t - j.t0
+      const top = j.y0 + j.v0 * tt - 0.5 * G * tt * tt
+      const base = wi >= 0 ? this.surface(wi) : 0
+      if (top < base) {
+        this.wallJets.splice(k, 1)
+        continue
+      }
+      this.wallWet = Math.max(this.wallWet, Math.min(top, this.VH))
+      // past the apex the sheet breaks up into drops thrown back seaward
+      if (tt > j.v0 / G && rnd() < 70 * dt) this.drop(this.xs - 0.3 - rnd() * 1.2, top, -3 - rnd() * 9, rnd() * 4, rnd() < 0.5)
+    }
+    if (this.wall && this.xs > 0) {
+      // the wall face stays wet up to the highest recent reach, then drains
+      const e = h[this.xs - 1] > DRY ? z[this.xs - 1] + h[this.xs - 1] : 0
+      this.wallWet = Math.max(e, this.wallWet - dt * 0.35)
     }
     // upwind advection of the scalars with the cell velocities
     this.advect(foam, dt)
@@ -612,6 +675,12 @@ export class Surf {
       d.x += d.vx * dt
       d.y += d.vy * dt
       d.life -= dt
+      if (this.wall && d.x >= this.xs) {
+        // hit the wall face: bounce back with restitution, wet the wall
+        d.x = this.xs - 0.02 - (d.x - this.xs) * 0.4
+        d.vx = -Math.abs(d.vx) * 0.35
+        this.wallWet = Math.max(this.wallWet, Math.min(d.y, this.VH))
+      }
       const i = Math.floor(d.x)
       if (i < 0 || i >= N || d.life <= 0) {
         this.drops.splice(k, 1)
@@ -635,6 +704,7 @@ export class Surf {
     }
     this.drops.length = 0
     this.plunges.length = 0
+    this.wallJets.length = 0
   }
 
   // continue from another model's state (pixel-size change): resample
